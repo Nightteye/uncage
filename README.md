@@ -1,299 +1,189 @@
 # ⛓️‍💥 Uncage
 
-> **The free, open-source, local website cloner and modern code exporter.**  
-> Effortlessly turn any Framer, Webflow, or modern website into clean, production-ready **React 18 + TSX**, **React 18 + JSX**, or **Static HTML/CSS/JS** — with 100% offline assets, preserved animations, and zero paywalls.
+> **Clone any Framer, Webflow, or modern website into clean, production-ready React or Static HTML code.**  
+> 100% free, open-source, and runs locally on your machine. No paywalls, no subscriptions, and no limits.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node: >=18.0.0](https://img.shields.io/badge/node-%3E%3D18.0.0-blue.svg)](https://nodejs.org/)
-[![Playwright](https://img.shields.io/badge/Playwright-Stealth-green.svg)](https://playwright.dev/)
-[![React 18](https://img.shields.io/badge/React-18-61dafb.svg)](https://react.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-green.svg)](https://nodejs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.x-646cff.svg)](https://vitejs.dev/)
+[![React](https://img.shields.io/badge/React-18.x-61dafb.svg)](https://react.dev/)
 
 ---
 
-## ⚡ Why Uncage?
+## ✨ Features
 
-Commercial tools like *NoCodeExport* lock your own design exports behind expensive subscriptions and recurring paywalls. **Uncage** runs 100% locally on your machine, has no telemetry, requires no API keys, and delivers full-fidelity exports:
-
-- 🎯 **No Paywalls, No Limits:** Clone unlimited pages, multi-route applications, and complete component libraries for free.
-- ⚛️ **Native React 18 & Vite:** Compiles raw HTML into clean, modular React TSX/JSX components with dynamic React Router v6 navigation.
-- 🎬 **Preserved Framer Animations:** Selectively isolates and preserves Framer Motion runtime engines, scroll reveals, and physics interactions.
-- 📦 **100% Offline-Ready Asset Bundling:** Intercepts, decodes, and rewrites images (AVIF, WebP, SVG, PNG), fonts (WOFF2, TTF), CSS `@import` rules, and recursive code-split JavaScript chunks.
-- 🛡️ **Anti-Bot & Stealth Engine:** Uses Playwright Extra + Stealth plugin with humanized scrolling, politeness jitter, and permissive CORS header injection to bypass Cloudflare and WAF protections.
-- 🗜️ **Built-in Optimizers:** Automatic CSS tree-shaking with PurgeCSS + CSSNano, plus lossless image compression with Sharp.
+- ⚛️ **Modern React 18 Exports:** Converts websites into modular React TSX or JSX components powered by **Vite** and **React Router v6**.
+- 🌐 **Static HTML Mode:** Generates clean, multi-page HTML/CSS/JS bundles that work offline without any build steps.
+- 🎬 **Preserves Animations:** Keeps Framer Motion interactions, scroll reveals, and hover effects working out of the box.
+- 📦 **100% Offline Assets:** Downloads and rewrites all images (AVIF, WebP, SVG, PNG), custom fonts (WOFF2, TTF), and code-split JavaScript chunks.
+- 🛡️ **Stealth Browser Engine:** Powered by Playwright with built-in bot-detection bypass to handle complex sites.
+- 🗜️ **Built-in Optimizers:** Automatic CSS tree-shaking with PurgeCSS and image compression with Sharp.
 
 ---
 
-## 📋 Table of Contents
+## 📋 Prerequisites
 
-- [Requirements](#-requirements)
-- [Installation](#-installation)
-- [Quick Start](#-quick-start)
-- [Export Formats](#-export-formats)
-- [CLI Reference](#-cli-reference)
-- [Running Exported Projects](#-running-exported-projects)
-- [Core Architecture](#-core-architecture)
-- [Troubleshooting & Pro-Tips](#-troubleshooting--pro-tips)
-- [Contributing](#-contributing)
-- [License](#-license)
+Before you start, make sure you have:
+
+- **[Node.js](https://nodejs.org/)** (version `18.0.0` or higher) installed on your computer.
+- **npm** (comes automatically with Node.js).
 
 ---
 
-## 💻 Requirements
+## 🚀 Quick Start in 3 Steps
 
-Ensure your environment meets the following prerequisites before running Uncage:
+### 1. Download & Install
 
-| Requirement | Minimum Version | Recommended | Notes |
-|---|---|---|---|
-| **Node.js** | `v18.0.0` | `v20.x` or `v22.x` | Required for native fetch & ESM |
-| **npm** | `v9.0.0` | Latest | `pnpm` or `yarn` also supported |
-| **OS** | Windows, macOS, Linux | Any | Cross-platform file path sanitization included |
-| **Chromium** | Latest | Latest | Installed automatically via Playwright |
-
----
-
-## 🚀 Installation
-
-### Option 1: Clone & Run Locally (Recommended)
+Open your terminal and run:
 
 ```bash
-# 1. Clone the repository
+# Clone the repository
 git clone https://github.com/your-username/uncage.git
 cd uncage
 
-# 2. Install dependencies
+# Install project dependencies
 npm install
 
-# 3. Install Playwright browser binaries
+# Install the browser engine
 npx playwright install chromium
 ```
 
-### Option 2: Link Globally as a CLI Tool
+### 2. Run the Interactive Wizard
 
-To use the `uncage` command from any directory in your terminal:
-
-```bash
-# Inside the cloned uncage folder:
-npm link
-
-# Now you can run uncage anywhere:
-uncage https://example.framer.website
-```
-
----
-
-## 🎯 Quick Start
-
-### 1. Interactive Mode (Wizard)
-
-Run Uncage without arguments to launch the step-by-step interactive CLI wizard:
+The easiest way to use Uncage is through the built-in wizard:
 
 ```bash
 npm start
-# or if linked globally:
-uncage
 ```
 
-The wizard will prompt you for:
-1. **Target URL** (e.g. `https://my-site.framer.website`)
-2. **Export Format** (`react-ts`, `react-js`, or `html`)
-3. **Output Directory Name**
-4. **Max Pages to Crawl**
-5. **Advanced Flags** (Headless toggle, CSS purging, Dynamic JS module resolution)
+Follow the on-screen prompts to enter your target website URL and choose your desired format.
 
 ---
 
-### 2. Direct CLI Command
+## 🎯 Direct Command Line Usage
 
-Pass the URL and flags directly in one line:
+You can also clone sites directly in a single terminal command:
 
 ```bash
-# Clone to React 18 + TypeScript (default)
-uncage https://my-site.framer.website -o my-react-site
+# Export as React 18 + TypeScript (Default)
+npm run uncage -- https://example.framer.website -o my-react-site
 
-# Clone to clean React JavaScript (JSX)
-uncage https://my-site.framer.website -f react-js -o my-jsx-site
+# Export as React 18 + JavaScript (JSX)
+npm run uncage -- https://example.framer.website -f react-js -o my-jsx-site
 
-# Clone to Pure Static HTML/CSS/JS
-uncage https://my-site.framer.website -f html -o my-static-site
+# Export as Pure Static HTML / CSS / JS
+npm run uncage -- https://example.framer.website -f html -o my-html-site
 ```
+
+> 💡 **Tip: Link globally to run `uncage` from anywhere:**
+> ```bash
+> npm link
+> # Now you can just run:
+> uncage https://example.framer.website
+> ```
 
 ---
 
 ## 📦 Export Formats
 
-Uncage supports 3 purpose-built export formats:
-
-### 1. `react-ts` (React 18 + TypeScript + Vite) — *Default*
-- Production-ready Vite TypeScript application.
-- Multi-page routing via `react-router-dom` v6 in `src/App.tsx`.
-- Type-safe components in `src/pages/*.tsx`.
-- Integrated `react-helmet-async` for route-specific meta tags and page titles.
-- Complete `tsconfig.json`, `vite.config.ts`, and `package.json`.
-
-### 2. `react-js` (React 18 + JavaScript + Vite)
-- Identical to `react-ts` but exports clean `.jsx` components without TypeScript overhead.
-- Includes `jsconfig.json` and `vite.config.js`.
-
-### 3. `html` (Pure Static Multi-Page Bundle)
-- Zero build tools needed. Pure standalone `.html`, `.css`, and `.js` files.
-- Preserves clean nested subdirectories (e.g. `about/team.html`).
-- Depth-aware relative asset paths (`./assets/` or `../../assets/`) for direct local `file://` opening or drag-and-drop deployment to Netlify, Vercel, or GitHub Pages.
+| Format | Option Flag | What You Get |
+|---|---|---|
+| **React 18 + TypeScript** *(Default)* | `-f react-ts` | Full Vite + TSX project, React Router v6 navigation, typed pages in `src/pages/*.tsx`. |
+| **React 18 + JavaScript** | `-f react-js` | Clean JSX components without TypeScript configuration. |
+| **Static HTML / CSS / JS** | `-f html` | Ready-to-browse static HTML files. Double-click `index.html` or drag-and-drop to Netlify/Vercel. |
 
 ---
 
-## 🛠️ CLI Reference
+## 🛠️ CLI Options & Flags
 
 ```
 Usage: uncage [url] [options]
 
 Arguments:
-  url                      The target URL to clone (optional: launches wizard if omitted)
+  url                    Target website URL to clone (optional: launches wizard if omitted)
 
 Options:
-  -o, --output <dir>       Custom output directory name (default: domain hostname)
-  -f, --format <format>    Target export format: react-ts, react-js, html (default: "react-ts")
-  -i, --interactive        Interactively prompt for export format
-  --max-pages <number>     Maximum number of pages to crawl (default: 50)
-  --timeout <ms>           Page navigation timeout in milliseconds (default: 30000)
-  --no-headless            Launch browser in headful (visible) window mode for debugging
-  --skip-deps              Skip recursive dynamic JS module scanning (faster export)
-  --no-purge               Skip PurgeCSS optimization (retains dynamic JS classes)
-  -h, --help               Display help for command
+  -o, --output <name>    Folder name for the exported site (default: website domain)
+  -f, --format <format>  Export format: react-ts, react-js, html (default: "react-ts")
+  -i, --interactive      Interactively pick the export format
+  --max-pages <number>   Maximum number of subpages to crawl (default: 50)
+  --timeout <ms>         Page load timeout in milliseconds (default: 30000)
+  --no-headless          Open visible browser window during crawl (helpful for debugging)
+  --skip-deps            Skip deep dynamic JS module resolution (faster export)
+  --no-purge             Keep all original CSS without PurgeCSS tree-shaking
+  -h, --help             Show help menu
 ```
-
-### Format Aliases
-You can use any of these shorthand aliases for the `-f` / `--format` flag:
-
-- **React TS:** `react-ts`, `react-tsx`, `react`, `tsx`, `ts`, `react-typescript`
-- **React JS:** `react-js`, `react-jsx`, `jsx`, `js`, `react-javascript`
-- **Static HTML:** `html`, `static`, `vanilla`, `html-css-js`, `plain`
 
 ---
 
-## 🏃 Running Exported Projects
+## 🏃 How to Run Your Cloned Website
 
-All exported projects are saved into the `output/` directory.
+All cloned websites are saved inside the `output/` folder.
 
-### Running a React TS / JS Project
+### If you exported to **React (TSX or JSX)**:
 
 ```bash
-# Navigate to the generated project
+# 1. Go into the exported site folder
 cd output/<your-output-folder>
 
-# 1. Install dependencies
+# 2. Install dependencies
 npm install
 
-# 2. Start the local Vite development server
+# 3. Start local development server
 npm run dev
 
-# 3. Build for production (outputs optimized static bundle to dist/)
+# 4. (Optional) Build for production
 npm run build
-
-# 4. Preview production build
-npm run preview
 ```
 
-### Running a Static HTML Project
+### If you exported to **Static HTML**:
 
 ```bash
-# Navigate to the generated folder
+# Go into the exported folder
 cd output/<your-output-folder>
 
-# Option 1: Direct File Opening
-# Double click index.html or open with Live Server in VS Code
-
-# Option 2: Run local static server
+# Start a local preview server
 npm run preview
-# or
-npx serve .
+
+# Or simply open index.html in any web browser!
 ```
 
 ---
 
-## ⚙️ Core Architecture
+## ⚙️ How Uncage Works Under the Hood
 
-Uncage operates as a deterministic 4-stage compilation pipeline:
-
-```
-[Target URL]
-     │
-     ▼
-┌────────────────────────────────────────────────────────┐
-│ 1. Stealth Crawler & Network Harvester                 │
-│    • Playwright stealth instance & smooth scroll pass  │
-│    • Declarative Shadow DOM serializer                 │
-│    • Raw asset interception (Images, Fonts, Media, CSS)│
-│    • Decompression fix & CORS header override          │
-│    • Recursive JS code-split dependency scanner        │
-└────────────────────────────────────────────────────────┘
-     │
-     ▼
-┌────────────────────────────────────────────────────────┐
-│ 2. URL Rewriter & Asset Linker                         │
-│    • CSS url() relative path resolution                │
-│    • HTML srcset multi-descriptor re-pointing          │
-│    • Intra-site absolute link to root-relative rewrite │
-│    • JS module sibling import hash realignment         │
-└────────────────────────────────────────────────────────┘
-     │
-     ▼
-┌────────────────────────────────────────────────────────┐
-│ 3. HTML to React JSX AST Compiler                      │
-│    • Cheerio AST traversal                             │
-│    • State-machine CSS style parser                    │
-│    • React form defaultValue mappings                  │
-│    • SVG element & attribute camelCasing               │
-│    • Head/Helmet sanitization & inline script escaping │
-└────────────────────────────────────────────────────────┘
-     │
-     ▼
-┌────────────────────────────────────────────────────────┐
-│ 4. Assembler & Scaffolder                              │
-│    • Dynamic React Router v6 generation                │
-│    • Idempotent Framer runtime loader injection        │
-│    • PurgeCSS tree-shaking & CSSNano minification      │
-│    • Sharp image compression                           │
-│    • Vite configuration & package.json generation      │
-└────────────────────────────────────────────────────────┘
-     │
-     ▼
-[Standalone Ready-to-Run Codebase]
-```
+1. **Stealth Crawl & Capture:** Launches an automated headless browser to load the target page, executes a smooth scroll pass to trigger lazy-loaded images, and extracts the full rendered DOM (including Shadow DOM).
+2. **Asset Interception & Decompression:** Intercepts every network request (fonts, images, videos, CSS stylesheets, and JS bundles), decodes the compressed content, and saves them locally with sanitized names.
+3. **AST JSX Compiler:** Parses HTML using AST traversal, converts styles and attributes into clean React props (`className`, `defaultValue`, camelCased SVGs), and organizes the layout.
+4. **Scaffolding & Assembly:** Generates Vite configurations, dynamic React Router mappings, and an isolated runtime loader that preserves animations without duplicate script collisions.
 
 ---
 
-## 💡 Troubleshooting & Pro-Tips
+## ❓ Frequently Asked Questions (FAQ)
 
-### 1. Cloned site has missing dropdowns, modals, or dark-mode styles
-**Cause:** PurgeCSS analyzes static HTML snapshots and may tree-shake CSS classes that are only applied dynamically via JavaScript at runtime.  
-**Fix:** Run with the `--no-purge` flag to retain 100% of the original stylesheets:
-```bash
-uncage https://example.com --no-purge
-```
+<details>
+<summary><b>1. Why are some button hover states or dark-mode styles missing?</b></summary>
+<p>By default, Uncage runs PurgeCSS to keep output CSS files tiny. If a site applies styles dynamically with JavaScript, run the clone with <code>--no-purge</code> to keep 100% of the original CSS:</p>
+<pre><code>uncage https://example.com --no-purge</code></pre>
+</details>
 
-### 2. Export is taking too long on large sites
-**Cause:** Uncage performs deep recursive scanning across all JavaScript bundles to ensure every code-split chunk is downloaded offline.  
-**Fix:** Use `--skip-deps` and limit `--max-pages`:
-```bash
-uncage https://example.com --skip-deps --max-pages 5
-```
+<details>
+<summary><b>2. How do I clone a website faster?</b></summary>
+<p>You can skip deep recursive JavaScript bundle scanning with <code>--skip-deps</code> and limit the page count:</p>
+<pre><code>uncage https://example.com --skip-deps --max-pages 5</code></pre>
+</details>
 
-### 3. Target site is blocking bots / returning 403 Forbidden
-**Cause:** Aggressive Cloudflare Turnstile or Akamai bot protection.  
-**Fix:** Run in headful (visible browser) mode so you can view the page loading:
-```bash
-uncage https://example.com --no-headless
-```
-
-### 4. Windows reserved filename issues (`con`, `prn`, `nul`)
-Uncage automatically sanitizes all file paths and route names across Windows, macOS, and Linux, preventing filesystem write errors.
+<details>
+<summary><b>3. Is my data private?</b></summary>
+<p>Yes. Uncage runs 100% locally on your machine. No telemetry, no external servers, and no tracking.</p>
+</details>
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are what make the open-source community thrive! Any contributions you make are **greatly appreciated**.
+Contributions, issues, and feature requests are welcome!  
+Feel free to check the [issues page](https://github.com/your-username/uncage/issues) if you want to contribute.
 
 1. Fork the Project
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
@@ -305,4 +195,4 @@ Contributions are what make the open-source community thrive! Any contributions 
 
 ## 📄 License
 
-Distributed under the **MIT License**. See `LICENSE` for more information.
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
