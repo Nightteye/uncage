@@ -1,10 +1,10 @@
-# ⛓️‍💥 Uncage
+# Uncage
 
 > **Clone any Framer, Webflow, or modern website into clean, production-ready React or Static HTML code.**  
 > 100% free, open-source, and runs locally on your machine. No paywalls, no subscriptions, and no limits.
 
 [![Status: Beta](https://img.shields.io/badge/Status-Public%20Beta-orange.svg)](https://github.com/Nightteye/uncage/issues)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-green.svg)](https://nodejs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.x-646cff.svg)](https://vitejs.dev/)
 [![React](https://img.shields.io/badge/React-18.x-61dafb.svg)](https://react.dev/)
@@ -12,40 +12,38 @@
 ---
 
 > [!WARNING]
-> ### ⚠️ Project Status: Public Beta
+> ### Project Status: Public Beta
 > **Uncage is currently in active beta development.** While it successfully handles and clones many complex Framer and Webflow sites, exports may still have fidelity gaps, missing dynamic script behaviors, or styling imperfections on certain advanced layouts.
 > 
-> I am actively working on enhancing the engine (including automatic Navbar/Footer component decomposition, improved runtime physics isolation, and deeper CMS support).
+> Active development is underway to enhance engine accuracy (including automatic Navbar/Footer component decomposition, improved runtime physics isolation, and deeper CMS support).
 > 
-> If you encounter a broken clone or layout issue, please **[open an issue on GitHub](https://github.com/Nightteye/uncage/issues)** with the target URL so we can fix it!
+> If you encounter a broken clone or layout issue, please **[open an issue on GitHub](https://github.com/Nightteye/uncage/issues)** with the target URL so it can be resolved!
 
 ---
 
-## ✨ Features
+## Key Features
 
-- ⚛️ **Modern React 18 Exports:** Converts websites into modular React TSX or JSX components powered by **Vite** and **React Router v6**.
-- 🌐 **Static HTML Mode:** Generates clean, multi-page HTML/CSS/JS bundles that work offline without any build steps.
-- 🎬 **Preserves Animations:** Keeps Framer Motion interactions, scroll reveals, and hover effects working out of the box.
-- 📦 **100% Offline Assets:** Downloads and rewrites all images (AVIF, WebP, SVG, PNG), custom fonts (WOFF2, TTF), and code-split JavaScript chunks.
-- 🛡️ **Stealth Browser Engine:** Powered by Playwright with built-in bot-detection bypass to handle complex sites.
-- 🗜️ **Built-in Optimizers:** Automatic CSS tree-shaking with PurgeCSS and image compression with Sharp.
-
----
-
-## 📋 Prerequisites
-
-Before you start, make sure you have:
-
-- **[Node.js](https://nodejs.org/)** (version `18.0.0` or higher) installed on your computer.
-- **npm** (comes automatically with Node.js).
+- **Modern React 18 Exports:** Converts websites into modular React TSX or JSX components powered by **Vite** and **React Router v6**.
+- **Static HTML Mode:** Generates clean, multi-page HTML/CSS/JS bundles that work offline without any build steps.
+- **Preserved Animations:** Keeps Framer Motion interactions, scroll reveals, and hover effects working out of the box.
+- **100% Offline Asset Bundling:** Intercepts and rewrites all images (AVIF, WebP, SVG, PNG), custom fonts (WOFF2, TTF), and code-split JavaScript chunks.
+- **Stealth Browser Engine:** Powered by Playwright with built-in bot-detection bypass to handle complex sites.
+- **Built-in Optimizers:** Automatic CSS tree-shaking with PurgeCSS and image compression with Sharp.
 
 ---
 
-## 🚀 Quick Start in 3 Steps
+## Prerequisites
+
+Ensure your environment meets the following requirements:
+
+- **[Node.js](https://nodejs.org/)** (version `18.0.0` or higher)
+- **npm** (included with Node.js)
+
+---
+
+## Quick Start
 
 ### 1. Download & Install
-
-Open your terminal and run:
 
 ```bash
 # Clone the repository
@@ -61,7 +59,7 @@ npx playwright install chromium
 
 ### 2. Run the Interactive Wizard
 
-The easiest way to use Uncage is through the built-in wizard:
+The easiest way to use Uncage is through the interactive CLI wizard:
 
 ```bash
 npm start
@@ -71,9 +69,9 @@ Follow the on-screen prompts to enter your target website URL and choose your de
 
 ---
 
-## 🎯 Direct Command Line Usage
+## Direct CLI Usage
 
-You can also clone sites directly in a single terminal command:
+You can also clone sites directly with command-line flags:
 
 ```bash
 # Export as React 18 + TypeScript (Default)
@@ -86,26 +84,26 @@ npm run uncage -- https://example.framer.website -f react-js -o my-jsx-site
 npm run uncage -- https://example.framer.website -f html -o my-html-site
 ```
 
-> 💡 **Tip: Link globally to run `uncage` from anywhere:**
+> **Tip:** Link globally to run `uncage` directly from any terminal window:
 > ```bash
 > npm link
-> # Now you can just run:
+> # Now run directly:
 > uncage https://example.framer.website
 > ```
 
 ---
 
-## 📦 Export Formats
+## Export Formats
 
-| Format | Option Flag | What You Get |
+| Format | Option Flag | Description |
 |---|---|---|
 | **React 18 + TypeScript** *(Default)* | `-f react-ts` | Full Vite + TSX project, React Router v6 navigation, typed pages in `src/pages/*.tsx`. |
 | **React 18 + JavaScript** | `-f react-js` | Clean JSX components without TypeScript configuration. |
-| **Static HTML / CSS / JS** | `-f html` | Ready-to-browse static HTML files. Double-click `index.html` or drag-and-drop to Netlify/Vercel. |
+| **Static HTML / CSS / JS** | `-f html` | Ready-to-browse static HTML files. Double-click `index.html` or deploy to Netlify/Vercel. |
 
 ---
 
-## 🛠️ CLI Options & Flags
+## CLI Options & Flags
 
 ```
 Usage: uncage [url] [options]
@@ -127,41 +125,41 @@ Options:
 
 ---
 
-## 🏃 How to Run Your Cloned Website
+## Running Exported Projects
 
 All cloned websites are saved inside the `output/` folder.
 
-### If you exported to **React (TSX or JSX)**:
+### Running React (TSX or JSX) Projects
 
 ```bash
-# 1. Go into the exported site folder
+# 1. Navigate to the exported site folder
 cd output/<your-output-folder>
 
 # 2. Install dependencies
 npm install
 
-# 3. Start local development server
+# 3. Start the local development server
 npm run dev
 
 # 4. (Optional) Build for production
 npm run build
 ```
 
-### If you exported to **Static HTML**:
+### Running Static HTML Projects
 
 ```bash
-# Go into the exported folder
+# Navigate to the exported folder
 cd output/<your-output-folder>
 
 # Start a local preview server
 npm run preview
 
-# Or simply open index.html in any web browser!
+# Or open index.html directly in any browser
 ```
 
 ---
 
-## ⚙️ How Uncage Works Under the Hood
+## Pipeline Architecture
 
 1. **Stealth Crawl & Capture:** Launches an automated headless browser to load the target page, executes a smooth scroll pass to trigger lazy-loaded images, and extracts the full rendered DOM (including Shadow DOM).
 2. **Asset Interception & Decompression:** Intercepts every network request (fonts, images, videos, CSS stylesheets, and JS bundles), decodes the compressed content, and saves them locally with sanitized names.
@@ -170,11 +168,11 @@ npm run preview
 
 ---
 
-## ❓ Frequently Asked Questions (FAQ)
+## Frequently Asked Questions
 
 <details>
 <summary><b>1. Why are some button hover states or dark-mode styles missing?</b></summary>
-<p>By default, Uncage runs PurgeCSS to keep output CSS files tiny. If a site applies styles dynamically with JavaScript, run the clone with <code>--no-purge</code> to keep 100% of the original CSS:</p>
+<p>By default, Uncage runs PurgeCSS to keep output CSS files small. If a site applies styles dynamically with JavaScript, run the clone with <code>--no-purge</code> to keep 100% of the original CSS:</p>
 <pre><code>uncage https://example.com --no-purge</code></pre>
 </details>
 
@@ -191,19 +189,19 @@ npm run preview
 
 ---
 
-## 🔬 Research & Origins
+## Research & Architecture Origins
 
 Uncage was designed and built from extensive foundational reverse-engineering research on modern web architectures, AST decompilation, and bot-resistant network harvesting.
 
-📖 Read the complete architectural research paper:  
+Read the complete architectural research paper:  
 **[`Code Exporter Architecture Research.md`](./Code%20Exporter%20Architecture%20Research.md)**
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-Contributions, issues, and feature requests are welcome!  
-Feel free to check the [issues page](https://github.com/Nightteye/uncage/issues) if you want to contribute.
+Contributions, issues, and feature requests are welcome.  
+Feel free to check the [issues page](https://github.com/Nightteye/uncage/issues) to contribute.
 
 1. Fork the Project
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
@@ -213,8 +211,8 @@ Feel free to check the [issues page](https://github.com/Nightteye/uncage/issues)
 
 ---
 
-## 📄 License
+## License
 
 Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
 
-Created with ❤️ by [Nightteye](https://github.com/Nightteye) and the open-source community.
+Created by [Nightteye](https://github.com/Nightteye) and the open-source community.
