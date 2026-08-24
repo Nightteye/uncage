@@ -38,7 +38,7 @@ Open your terminal and run:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/uncage.git
+git clone https://github.com/Nightteye/uncage.git
 cd uncage
 
 # Install project dependencies
@@ -180,10 +180,19 @@ npm run preview
 
 ---
 
+## 🔬 Research & Origins
+
+Uncage was designed and built from extensive foundational reverse-engineering research on modern web architectures, AST decompilation, and bot-resistant network harvesting.
+
+📖 Read the complete architectural research paper:  
+**[`Code Exporter Architecture Research.md`](./Code%20Exporter%20Architecture%20Research.md)**
+
+---
+
 ## 🤝 Contributing
 
 Contributions, issues, and feature requests are welcome!  
-Feel free to check the [issues page](https://github.com/your-username/uncage/issues) if you want to contribute.
+Feel free to check the [issues page](https://github.com/Nightteye/uncage/issues) if you want to contribute.
 
 1. Fork the Project
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
@@ -196,3 +205,5 @@ Feel free to check the [issues page](https://github.com/your-username/uncage/iss
 ## 📄 License
 
 Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
+
+Created with ❤️ by [Nightteye](https://github.com/Nightteye) and the open-source community.

@@ -24,7 +24,12 @@
     "framer",
     "webflow"
   ],
-  "author": "",
+  "author": "Nightteye",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Nightteye/uncage.git"
+  },
+  "homepage": "https://github.com/Nightteye/uncage#readme",
   "license": "MIT",
   "type": "module",
   "dependencies": {
