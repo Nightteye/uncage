@@ -3,10 +3,21 @@
 > **Clone any Framer, Webflow, or modern website into clean, production-ready React or Static HTML code.**  
 > 100% free, open-source, and runs locally on your machine. No paywalls, no subscriptions, and no limits.
 
+[![Status: Beta](https://img.shields.io/badge/Status-Public%20Beta-orange.svg)](https://github.com/Nightteye/uncage/issues)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-green.svg)](https://nodejs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.x-646cff.svg)](https://vitejs.dev/)
 [![React](https://img.shields.io/badge/React-18.x-61dafb.svg)](https://react.dev/)
+
+---
+
+> [!WARNING]
+> ### ⚠️ Project Status: Public Beta
+> **Uncage is currently in active beta development.** While it successfully handles and clones many complex Framer and Webflow sites, exports may still have fidelity gaps, missing dynamic script behaviors, or styling imperfections on certain advanced layouts.
+> 
+> I am actively working on enhancing the engine (including automatic Navbar/Footer component decomposition, improved runtime physics isolation, and deeper CMS support).
+> 
+> If you encounter a broken clone or layout issue, please **[open an issue on GitHub](https://github.com/Nightteye/uncage/issues)** with the target URL so we can fix it!
 
 ---
 
