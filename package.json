@@ -1,0 +1,48 @@
+{
+  "name": "uncage",
+  "version": "1.0.0",
+  "description": "Deterministic, local website cloner and React code exporter",
+  "main": "src/index.ts",
+  "bin": {
+    "uncage": "./bin/uncage.js"
+  },
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "uncage": "tsx src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "crawler",
+    "scraper",
+    "react",
+    "vite",
+    "exporter",
+    "cloner",
+    "framer",
+    "webflow"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@inquirer/prompts": "^8.6.0",
+    "cheerio": "^1.2.0",
+    "commander": "^15.0.0",
+    "cssnano": "^8.0.8",
+    "playwright": "^1.62.1",
+    "playwright-extra": "^4.3.6",
+    "postcss": "^8.5.26",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "purgecss": "^8.0.0",
+    "sharp": "^0.35.3",
+    "tsx": "^4.23.12"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^7.0.2"
+  }
+}
