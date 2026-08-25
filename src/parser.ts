@@ -295,7 +295,7 @@ export const voidElements = new Set([
   'link', 'meta', 'param', 'source', 'track', 'wbr'
 ]);
 
-export function nodeToJsx(el: any, $: any, indent = ''): { jsx: string; usesLink: boolean } {
+export function nodeToJsx(el: any, $: any, indent = '', currentRoute = '/'): { jsx: string; usesLink: boolean } {
   if (el.type === 'text') {
     const text = (el.data || '')
       .replace(/&/g, '&amp;')
@@ -388,6 +388,14 @@ export function nodeToJsx(el: any, $: any, indent = ''): { jsx: string; usesLink
         let pathPart = (hashMatch ? hashMatch[1] : targetRoute) || '';
         const hashPart = (hashMatch ? hashMatch[2] : '') || '';
 
+        // Resolve relative links (e.g. "../about", "./team") against current page route
+        if (!pathPart.startsWith('/')) {
+          try {
+            const base = currentRoute.startsWith('/') ? currentRoute : '/' + currentRoute;
+            const resolved = new URL(pathPart, `http://dummy.com${base}`);
+            pathPart = resolved.pathname;
+          } catch {}
+        }
 
         pathPart = pathPart.replace(/^\.?\//, '').replace(/^\/+/, '');
         if (pathPart === '' || pathPart === '.' || pathPart === 'index' || pathPart === 'index.html') {
@@ -485,7 +493,7 @@ export function nodeToJsx(el: any, $: any, indent = ''): { jsx: string; usesLink
 
   let innerJsx = '';
   for (const child of children) {
-    const res = nodeToJsx(child, $, indent + '  ');
+    const res = nodeToJsx(child, $, indent + '  ', currentRoute);
     innerJsx += res.jsx;
     if (res.usesLink) usesLink = true;
   }
@@ -521,7 +529,7 @@ export async function compileToReact(
     
     for (const child of bodyChildren) {
       if (child.type === 'text' && !child.data?.trim()) continue;
-      const res = nodeToJsx(child, $, '        ');
+      const res = nodeToJsx(child, $, '        ', route);
       jsxContent += res.jsx;
       if (res.usesLink) pageUsesLink = true;
     }
@@ -534,14 +542,14 @@ export async function compileToReact(
         const tagName = child.tagName.toLowerCase();
         // Keep SEO tags, stylesheets, styles, and noscript in Helmet
         if (tagName === 'title' || tagName === 'meta' || tagName === 'style' || tagName === 'noscript') {
-          const res = nodeToJsx(child, $, '          ');
+          const res = nodeToJsx(child, $, '          ', route);
           if (res.jsx.trim()) {
             helmetContent += res.jsx;
             usesHelmet = true;
           }
         } else if (tagName === 'link') {
           // Keep all link tags (stylesheets, canonical, icons, preloads, etc.)
-          const res = nodeToJsx(child, $, '          ');
+          const res = nodeToJsx(child, $, '          ', route);
           if (res.jsx.trim()) {
             helmetContent += res.jsx;
             usesHelmet = true;
