@@ -65,7 +65,9 @@ export async function optimizeImages(imgDir: string) {
         } else if (ext === '.jpg' || ext === '.jpeg') {
           optimizedBuffer = await sharp(originalBuffer).jpeg({ quality: 85, mozjpeg: true }).toBuffer();
         } else if (ext === '.webp') {
-          optimizedBuffer = await sharp(originalBuffer).webp({ quality: 85, effort: 6 }).toBuffer();
+          optimizedBuffer = await sharp(originalBuffer, { animated: true }).webp({ quality: 85, effort: 6 }).toBuffer();
+        } else if (ext === '.gif') {
+          optimizedBuffer = await sharp(originalBuffer, { animated: true }).gif({ effort: 7 }).toBuffer();
         }
 
         // Only overwrite if the optimized version is strictly smaller than the original
