@@ -4,13 +4,7 @@ import crypto from 'crypto';
 import * as cheerio from 'cheerio';
 import type { ExporterStrategy } from '../types.js';
 import { synthesizeFramerBreakpoints } from '../optimizer.js';
-
-
-const STATIC_EXTENSIONS = new Set([
-  'pdf', 'zip', 'tar', 'gz', 'doc', 'docx', 'xlsx', 'xml',
-  'png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'svg', 'ico',
-  'mp4', 'webm', 'mp3', 'wav', 'ogg'
-]);
+import { STATIC_EXTENSIONS } from '../constants.js';
 
 export function routeToHtmlFilename(route: string): string {
   if (!route || route === '/' || route === '/index') return 'index.html';
