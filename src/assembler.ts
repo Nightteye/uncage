@@ -196,6 +196,7 @@ export default defineConfig({
         scripts.forEach(function(src) {
           var s = document.createElement("script");
           s.src = src;
+          s.type = "module";
           s.async = false;
           document.head.appendChild(s);
         });
