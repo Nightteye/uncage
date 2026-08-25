@@ -29,6 +29,29 @@ export function toPascalCase(str: string): string {
   return pascal;
 }
 
+export function buildRouteComponentMap(routes: string[]): Map<string, string> {
+  const routeComponentMap = new Map<string, string>();
+  const usedLowerNames = new Set<string>();
+
+  for (const route of routes) {
+    let compName = toPascalCase(route);
+    if (!compName || /^\d/.test(compName)) {
+      compName = `Page${compName || 'Home'}`;
+    }
+    if (usedLowerNames.has(compName.toLowerCase())) {
+      let counter = 2;
+      while (usedLowerNames.has(`${compName}${counter}`.toLowerCase())) {
+        counter++;
+      }
+      compName = `${compName}${counter}`;
+    }
+    usedLowerNames.add(compName.toLowerCase());
+    routeComponentMap.set(route, compName);
+  }
+
+  return routeComponentMap;
+}
+
 // Convert inline style string to React style object
 export function parseStyle(styleStr: string): string {
   const rules: string[] = [];
@@ -485,9 +508,7 @@ export async function compileToReact(
   const pagesDir = path.join(outputDir, 'src', 'pages');
   await fs.mkdir(pagesDir, { recursive: true });
 
-  const usedComponentNames = new Set<string>();
-  const usedLowerNames = new Set<string>();
-
+  const routeMap = buildRouteComponentMap(Object.keys(pages));
 
   for (const [route, htmlContent] of Object.entries(pages)) {
     const $ = cheerio.load(htmlContent);
@@ -528,17 +549,7 @@ export async function compileToReact(
       }
     }
 
-    let componentName = toPascalCase(route);
-    if (usedLowerNames.has(componentName.toLowerCase())) {
-      let counter = 2;
-      while (usedLowerNames.has(`${componentName}${counter}`.toLowerCase())) {
-        counter++;
-      }
-      componentName = `${componentName}${counter}`;
-    }
-    usedComponentNames.add(componentName);
-    usedLowerNames.add(componentName.toLowerCase());
-
+    const componentName = routeMap.get(route) || toPascalCase(route);
 
     const typeAnnotation = isTs ? ': React.FC' : '';
 

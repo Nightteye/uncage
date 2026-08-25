@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import * as cheerio from 'cheerio';
-import { toPascalCase } from './parser.js';
+import { toPascalCase, buildRouteComponentMap } from './parser.js';
 import { synthesizeFramerBreakpoints } from './optimizer.js';
 
 
@@ -231,27 +231,7 @@ export default defineConfig({
     normalizedRoutes.push('/');
   }
 
-  const usedComponentNames = new Set<string>();
-  const usedLowerNames = new Set<string>();
-  const routeComponentMap = new Map<string, string>();
-
-  for (const r of normalizedRoutes) {
-    let compName = toPascalCase(r);
-    // Guard: empty or starts with digit → prefix with 'Page'
-    if (!compName || /^\d/.test(compName)) {
-      compName = `Page${compName || 'Home'}`;
-    }
-    if (usedLowerNames.has(compName.toLowerCase())) {
-      let counter = 2;
-      while (usedLowerNames.has(`${compName}${counter}`.toLowerCase())) {
-        counter++;
-      }
-      compName = `${compName}${counter}`;
-    }
-    usedComponentNames.add(compName);
-    usedLowerNames.add(compName.toLowerCase());
-    routeComponentMap.set(r, compName);
-  }
+  const routeComponentMap = buildRouteComponentMap(normalizedRoutes);
 
 
   const uniqueComponents = Array.from(new Set(routeComponentMap.values()));
