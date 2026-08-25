@@ -204,14 +204,18 @@ export default defineConfig({
     </script>`;
   }
 
+  const safeTitle = originalTitle.replace(/<\/(title|style|script)/gi, '<\\/$1');
+  const safeHead = cleanedHead.replace(/<\/(title|style|script)/gi, '<\\/$1');
+  const safeCss = framerBreakpointCss.replace(/<\/(title|style|script)/gi, '<\\/$1');
+
   const indexHtml = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${originalTitle}</title>
-    ${cleanedHead}
-    ${framerBreakpointCss ? `<style data-framer-breakpoints="">${framerBreakpointCss}</style>` : ''}${runtimeLoaderScript}
+    <title>${safeTitle}</title>
+    ${safeHead}
+    ${safeCss ? `<style data-framer-breakpoints="">${safeCss}</style>` : ''}${runtimeLoaderScript}
   </head>
   <body>
     <div id="root"></div>

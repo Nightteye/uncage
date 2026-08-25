@@ -80,7 +80,8 @@ export const htmlStrategy: ExporterStrategy = {
       // Inject synthesized Framer breakpoint rules if present
       const framerBreakpoints = synthesizeFramerBreakpoints(htmlContent);
       if (framerBreakpoints) {
-        $('head').append(`<style data-framer-breakpoints="">${framerBreakpoints}</style>`);
+        const safeCss = framerBreakpoints.replace(/<\/(title|style|script)/gi, '<\\/$1');
+        $('head').append(`<style data-framer-breakpoints="">${safeCss}</style>`);
       }
 
       const depth = filename.split('/').length - 1;
