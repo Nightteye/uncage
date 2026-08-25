@@ -115,7 +115,7 @@ program
       }
 
       // Step 2: Compile HTML pages into the chosen target format
-      await strategy.compile(outputDir, pages);
+      await strategy.compile(outputDir, pages, runtimeScripts);
 
       // Step 3: Assemble (scaffold project configuration and entrypoints)
       await strategy.assemble(outputDir, url, originalHead, Object.keys(pages), runtimeScripts, { keepAnalytics: opts?.keepAnalytics });

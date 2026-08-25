@@ -19,7 +19,7 @@ export const htmlStrategy: ExporterStrategy = {
   format: 'html',
   description: 'Pure static multi-page HTML, CSS, and JS bundle ready for direct browsing or static hosting',
 
-  async compile(outputDir: string, pages: Record<string, string>): Promise<void> {
+  async compile(outputDir: string, pages: Record<string, string>, runtimeScripts?: string[]): Promise<void> {
     console.log('  [Compiler] Compiling Static HTML pages...');
 
     // Build route-to-filename lookup with collision tracking
@@ -107,6 +107,29 @@ export const htmlStrategy: ExporterStrategy = {
 
       const depth = filename.split('/').length - 1;
       const relPrefix = depth === 0 ? './' : '../'.repeat(depth);
+
+      // Inject idempotent runtime loader for Framer animation scripts
+      const scripts = (runtimeScripts || []).map(src => {
+        return src.startsWith('/assets/') ? `${relPrefix}assets/${src.slice(8)}` : src;
+      });
+      if (scripts.length > 0) {
+        const scriptArray = JSON.stringify(scripts);
+        $('head').append(`
+    <script data-uncage-runtime>
+      (function() {
+        if (window.__UNCAGE_RUNTIME_LOADED) return;
+        window.__UNCAGE_RUNTIME_LOADED = true;
+        var scripts = ${scriptArray};
+        scripts.forEach(function(src) {
+          var s = document.createElement("script");
+          s.src = src;
+          s.type = "module";
+          s.async = false;
+          document.head.appendChild(s);
+        });
+      })();
+    </script>`);
+      }
 
       // Relativize root-relative asset URLs (/assets/ -> ./assets/ or ../assets/) for direct file:// browsing
       let finalHtml = $.html();
