@@ -15,71 +15,90 @@ export async function optimizeExtractedCss(outputDir: string, pages: Record<stri
 
   // Write a temporary file with all HTML content to feed into PurgeCSS
   const tempHtmlPath = path.join(outputDir, '.temp-purge-content.html');
-  const allHtml = Object.values(pages).join('\n');
-  await fs.writeFile(tempHtmlPath, allHtml);
+  try {
+    const allHtml = Object.values(pages).join('\n');
+    await fs.writeFile(tempHtmlPath, allHtml);
 
-  console.log(`  [Optimizer] Purging and minifying ${files.filter(f => f.endsWith('.css')).length} CSS files...`);
-  
-  for (const file of files) {
-    if (!file.endsWith('.css')) continue;
-    const filePath = path.join(cssDir, file);
+    console.log(`  [Optimizer] Purging and minifying ${files.filter(f => f.endsWith('.css')).length} CSS files...`);
     
-    const jsGlob = path.join(outputDir, 'public', 'assets', 'js', '*.{js,mjs}').replace(/\\/g, '/');
-    try {
-      const purgeResult = await new PurgeCSS().purge({
-        content: [tempHtmlPath, jsGlob],
-        css: [filePath],
-        safelist: [/^(:|::-webkit-|::-moz-|::-ms-|::-o-)/, /^framer-/, /^w-/, /^motion-/, /^animate-/, /^state-/, /active/, /visible/, /hidden/]
-      });
+    for (const file of files) {
+      if (!file.endsWith('.css')) continue;
+      const filePath = path.join(cssDir, file);
+      
+      const jsGlob = path.join(outputDir, 'public', 'assets', 'js', '*.{js,mjs}').replace(/\\/g, '/');
+      try {
+        const purgeResult = await new PurgeCSS().purge({
+          content: [tempHtmlPath, jsGlob],
+          css: [filePath],
+          safelist: [/^(:|::-webkit-|::-moz-|::-ms-|::-o-)/, /^framer-/, /^w-/, /^motion-/, /^animate-/, /^state-/, /active/, /visible/, /hidden/]
+        });
 
-      if (purgeResult && purgeResult[0]) {
-        const purgedCss = purgeResult[0].css;
-        const result = await postcss([cssnano()]).process(purgedCss, { from: filePath, to: filePath });
-        await fs.writeFile(filePath, result.css);
+        if (purgeResult && purgeResult[0]) {
+          const purgedCss = purgeResult[0].css;
+          const result = await postcss([cssnano()]).process(purgedCss, { from: filePath, to: filePath });
+          await fs.writeFile(filePath, result.css);
+        }
+      } catch (e: any) {
+        console.log(`        Failed to optimize ${file}: ${e.message}`);
       }
-    } catch (e: any) {
-      console.log(`        Failed to optimize ${file}: ${e.message}`);
     }
+  } finally {
+    // Cleanup temporary purge file guaranteed
+    await fs.unlink(tempHtmlPath).catch(() => {});
   }
-
-  // Cleanup
-  await fs.unlink(tempHtmlPath).catch(() => {});
 }
 
 export async function optimizeImages(imgDir: string) {
   try {
     const sharp = (await import('sharp')).default;
-    const files = await fs.readdir(imgDir);
+    let files: string[] = [];
+    try {
+      files = await fs.readdir(imgDir);
+    } catch {
+      return;
+    }
+
+    const candidateFiles = files.filter(f => {
+      const ext = path.extname(f).toLowerCase();
+      return ['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(ext);
+    });
+
+    if (candidateFiles.length === 0) return;
+
     let optimizedCount = 0;
+    const concurrency = 8;
 
-    for (const file of files) {
-      const ext = path.extname(file).toLowerCase();
-      const filePath = path.join(imgDir, file);
+    for (let i = 0; i < candidateFiles.length; i += concurrency) {
+      const chunk = candidateFiles.slice(i, i + concurrency);
+      await Promise.allSettled(chunk.map(async (file) => {
+        const ext = path.extname(file).toLowerCase();
+        const filePath = path.join(imgDir, file);
 
-      try {
-        const originalBuffer = await fs.readFile(filePath);
-        let optimizedBuffer: Buffer | null = null;
+        try {
+          const originalBuffer = await fs.readFile(filePath);
+          let optimizedBuffer: Buffer | null = null;
 
-        if (ext === '.png') {
-          optimizedBuffer = await sharp(originalBuffer).png({ compressionLevel: 9, effort: 7 }).toBuffer();
-        } else if (ext === '.jpg' || ext === '.jpeg') {
-          optimizedBuffer = await sharp(originalBuffer).jpeg({ quality: 85, mozjpeg: true }).toBuffer();
-        } else if (ext === '.webp') {
-          optimizedBuffer = await sharp(originalBuffer, { animated: true }).webp({ quality: 85, effort: 6 }).toBuffer();
-        } else if (ext === '.gif') {
-          optimizedBuffer = await sharp(originalBuffer, { animated: true }).gif({ effort: 7 }).toBuffer();
-        }
+          if (ext === '.png') {
+            optimizedBuffer = await sharp(originalBuffer).png({ compressionLevel: 9, effort: 7 }).toBuffer();
+          } else if (ext === '.jpg' || ext === '.jpeg') {
+            optimizedBuffer = await sharp(originalBuffer).jpeg({ quality: 85, mozjpeg: true }).toBuffer();
+          } else if (ext === '.webp') {
+            optimizedBuffer = await sharp(originalBuffer, { animated: true }).webp({ quality: 85, effort: 6 }).toBuffer();
+          } else if (ext === '.gif') {
+            optimizedBuffer = await sharp(originalBuffer, { animated: true }).gif({ effort: 7 }).toBuffer();
+          }
 
-        // Only overwrite if the optimized version is strictly smaller than the original
-        if (optimizedBuffer && optimizedBuffer.length < originalBuffer.length) {
-          await fs.writeFile(filePath, optimizedBuffer);
-          optimizedCount++;
-        }
-      } catch {}
+          // Only overwrite if the optimized version is strictly smaller than the original
+          if (optimizedBuffer && optimizedBuffer.length < originalBuffer.length) {
+            await fs.writeFile(filePath, optimizedBuffer);
+            optimizedCount++;
+          }
+        } catch {}
+      }));
     }
 
     if (optimizedCount > 0) {
-      console.log(`  [Optimizer] Optimized ${optimizedCount} images (smaller file sizes preserved)`);
+      console.log(`  [Optimizer] Concurrently optimized ${optimizedCount} images (smaller file sizes preserved)`);
     }
   } catch {
     // Sharp optional / graceful fallback
