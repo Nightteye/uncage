@@ -207,6 +207,15 @@ npm run preview
 
 ---
 
+## Security & Crawler Architecture
+
+Uncage launches a local Playwright Chromium instance with relaxed CORS headers (`--disable-web-security`) strictly to enable cross-origin asset harvesting (fonts, CDNs, chunks) and Shadow DOM inspection.
+
+> [!NOTE]
+> Always crawl websites you trust or own. Uncage executes client-side JavaScript inside a headless browser to capture hydrated DOM states.
+
+---
+
 ## Research & Architecture Origins
 
 Uncage was designed and built from extensive foundational reverse-engineering research on modern web architectures, AST decompilation, and bot-resistant network harvesting.
