@@ -169,7 +169,8 @@ export async function extract(
     const visited = new Set<string>();
     const baseUrlObj = new URL(baseUrl);
     const baseOrigin = baseUrlObj.origin;
-    const initialUrl = `${baseOrigin}${baseUrlObj.pathname.replace(/\/$/, '') || '/'}`;
+    const initialPath = baseUrlObj.pathname.replace(/\/$/, '') || '/';
+    const initialUrl = `${baseOrigin}${initialPath}${baseUrlObj.search || ''}`;
     const queue = [initialUrl];
     const pages: Record<string, string> = {};
     let originalHead = '';
@@ -199,14 +200,17 @@ export async function extract(
         
         // Smoothly scroll down to trigger IntersectionObservers, lazy-loaded media, and scroll animations
         await page.evaluate(async () => {
-          const totalHeight = document.body.scrollHeight;
           const step = Math.max(300, Math.floor(window.innerHeight / 2));
-          for (let current = 0; current <= totalHeight; current += step) {
+          let current = 0;
+          let maxScroll = document.body.scrollHeight;
+          while (current <= maxScroll && current < 50000) {
             window.scrollTo(0, current);
             window.dispatchEvent(new Event('scroll'));
-            await new Promise(r => setTimeout(r, 100));
+            await new Promise(r => setTimeout(r, 80));
+            current += step;
+            maxScroll = Math.max(maxScroll, document.body.scrollHeight);
           }
-          await new Promise(r => setTimeout(r, 400));
+          await new Promise(r => setTimeout(r, 300));
           window.scrollTo(0, 0);
           window.dispatchEvent(new Event('scroll'));
         }).catch(() => {});
@@ -332,14 +336,22 @@ export async function extract(
 
 
         const landedUrl = page.url();
-        const landedUrlObj = new URL(landedUrl);
-        let pathname = landedUrlObj.pathname;
-        if (pathname === '/') pathname = '/index';
-        if (pathname.endsWith('/') && pathname.length > 1) pathname = pathname.slice(0, -1);
-        
-        pages[pathname] = html;
+        if (landedUrl && !landedUrl.startsWith('about:') && !landedUrl.startsWith('chrome:')) {
+          try {
+            const landedUrlObj = new URL(landedUrl);
+            if (landedUrlObj.origin === baseOrigin) {
+              let pathname = landedUrlObj.pathname;
+              if (pathname === '/') pathname = '/index';
+              if (pathname.endsWith('/') && pathname.length > 1) pathname = pathname.slice(0, -1);
+              pages[pathname] = html;
+            } else {
+              console.log(`        Redirected to external origin (${landedUrlObj.origin}); skipped page capture.`);
+            }
+          } catch {}
+        }
       } catch (e: any) {
-        console.log(`        Failed to crawl ${currentUrl}: ${e.message}`);
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        console.log(`        Failed to crawl ${currentUrl}: ${errorMsg}`);
       } finally {
         await page.close();
       }
