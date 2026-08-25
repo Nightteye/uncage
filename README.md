@@ -40,6 +40,16 @@
 
 ---
 
+## Tech Stack
+
+1. **Language & Runtime:** TypeScript running on Node.js.
+2. **Extraction Engine:** Playwright (Headless Chromium, Network Interception).
+3. **CLI UX:** Inquirer.js & Chalk (Interactive terminal UI).
+4. **Parsing Engine:** Custom HTML-to-JSX AST Compiler.
+5. **Output Architecture:** Vite & React 18 scaffolds.
+
+---
+
 ## Prerequisites
 
 Ensure your environment meets the following requirements:
