@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import crypto from 'crypto';
 import * as cheerio from 'cheerio';
 import type { ExporterStrategy } from '../types.js';
 import { synthesizeFramerBreakpoints } from '../optimizer.js';
@@ -27,18 +28,33 @@ export const htmlStrategy: ExporterStrategy = {
   async compile(outputDir: string, pages: Record<string, string>): Promise<void> {
     console.log('  [Compiler] Compiling Static HTML pages...');
 
-    // Build route-to-filename lookup
+    // Build route-to-filename lookup with collision tracking
     const routeMap = new Map<string, string>();
+    const usedFilenames = new Set<string>();
+
     for (const route of Object.keys(pages)) {
-      routeMap.set(route, routeToHtmlFilename(route));
-      if (route === '/' || route === '/index') routeMap.set('/index', 'index.html');
+      let filename = routeToHtmlFilename(route);
+      const isHome = route === '/' || route === '/index';
+
+      if (usedFilenames.has(filename.toLowerCase()) && !isHome) {
+        const hash = crypto.createHash('md5').update(route).digest('hex').slice(0, 6);
+        const ext = path.extname(filename);
+        const base = filename.slice(0, -ext.length);
+        const disambiguated = `${base}-${hash}${ext}`;
+        console.log(`  [Compiler] Route collision: '${route}' disambiguated to '${disambiguated}'`);
+        filename = disambiguated;
+      }
+
+      usedFilenames.add(filename.toLowerCase());
+      routeMap.set(route, filename);
+      if (isHome) routeMap.set('/index', 'index.html');
       if (route.endsWith('/')) {
-        routeMap.set(route.slice(0, -1), routeToHtmlFilename(route));
+        routeMap.set(route.slice(0, -1), filename);
       }
     }
 
     for (const [route, htmlContent] of Object.entries(pages)) {
-      const filename = routeToHtmlFilename(route);
+      const filename = routeMap.get(route) || routeToHtmlFilename(route);
       const $ = cheerio.load(htmlContent);
 
       // Rewrite internal links to point directly to exported .html files
