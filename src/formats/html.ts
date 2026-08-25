@@ -62,17 +62,28 @@ export const htmlStrategy: ExporterStrategy = {
 
         if (!isExternal && !isStaticAsset && !$(el).attr('download')) {
           const match = href.match(/^([^?#]*)([?#].*)?$/);
-          const rawPath = match?.[1] || '';
+          let rawPath = match?.[1] || '';
           const hashOrQuery = match?.[2] || '';
+
+          if (!rawPath.startsWith('/')) {
+            try {
+              const baseRoute = route.startsWith('/') ? route : '/' + route;
+              const resolved = new URL(rawPath, `http://dummy.com${baseRoute}`);
+              rawPath = resolved.pathname;
+            } catch {}
+          }
+
+          const depth = filename.split('/').length - 1;
+          const relPrefix = depth === 0 ? './' : '../'.repeat(depth);
 
           if (routeMap.has(rawPath)) {
             const targetHtml = routeMap.get(rawPath)!;
-            $(el).attr('href', targetHtml + hashOrQuery);
-          } else if (rawPath === '/' || rawPath === '' || rawPath === '/index') {
-            $(el).attr('href', 'index.html' + hashOrQuery);
+            $(el).attr('href', relPrefix + targetHtml + hashOrQuery);
+          } else if (rawPath === '/' || rawPath === '/index') {
+            $(el).attr('href', relPrefix + 'index.html' + hashOrQuery);
           } else if (rawPath.startsWith('/')) {
             const fallbackHtml = routeToHtmlFilename(rawPath);
-            $(el).attr('href', fallbackHtml + hashOrQuery);
+            $(el).attr('href', relPrefix + fallbackHtml + hashOrQuery);
           }
         }
       });
