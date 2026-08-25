@@ -5,6 +5,7 @@ import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { extract } from './extractor.js';
 import { resolveFormat, promptFormat, strategies } from './formats/index.js';
 import { runWizard, printBanner } from './wizard.js';
+import { sanitizeFileName } from './constants.js';
 import type { ExtractorOptions, ExportFormat } from './types.js';
 
 chromium.use(stealthPlugin());
@@ -29,6 +30,7 @@ program
   .option('--no-headless', 'Run browser in headful (visible) window mode for debugging')
   .option('--skip-deps', 'Skip recursive dynamic JS module dependency resolution', false)
   .option('--no-purge', 'Skip PurgeCSS optimization to retain dynamically applied classes')
+  .option('--keep-analytics', 'Retain third-party analytics and tracking scripts in the exported project', false)
   .action(async (targetUrl?: string, opts?: { 
     output?: string; 
     format?: string; 
@@ -38,6 +40,7 @@ program
     headless?: boolean; 
     skipDeps?: boolean; 
     purge?: boolean;
+    keepAnalytics?: boolean;
   }) => {
     try {
       let url = targetUrl;
@@ -50,13 +53,18 @@ program
         skipDeps: opts?.skipDeps ?? false,
       };
 
-      // If no URL was passed on the command line, run the interactive wizard
+      // If no URL was passed on the command line, run the interactive wizard.
+      // Wizard answers only override CLI flags the user actually configured there;
+      // flags like --max-pages/--timeout keep their values otherwise.
       if (!url) {
         const wizardResult = await runWizard();
         url = wizardResult.url;
         outputName = wizardResult.outputName;
         chosenFormat = wizardResult.format;
-        extractorOptions = wizardResult.options;
+        const wizardOverrides = Object.fromEntries(
+          Object.entries(wizardResult.options).filter(([, v]) => v !== undefined)
+        );
+        extractorOptions = { ...extractorOptions, ...wizardOverrides };
       } else {
         printBanner();
         // Auto-prepend https:// if missing in CLI argument
@@ -86,11 +94,14 @@ program
       }
 
       const startTime = Date.now();
-      const strategy = strategies[chosenFormat] || strategies['react-ts'];
+      const strategy = strategies[chosenFormat];
+
+      // extract() sanitizes the name internally; print the same name it will use
+      const displayOutputName = sanitizeFileName(outputName) || 'extracted-site';
 
       console.log(`  Target: ${url}`);
       console.log(`  Format: ${strategy.name}`);
-      console.log(`  Output: output/${outputName}\n`);
+      console.log(`  Output: output/${displayOutputName}\n`);
 
       // Step 1: Extract (stealth crawler, asset harvest, HTML capture)
       const { pages, outputDir, originalHead, runtimeScripts } = await extract(url, outputName, extractorOptions);
@@ -107,16 +118,16 @@ program
       await strategy.compile(outputDir, pages);
 
       // Step 3: Assemble (scaffold project configuration and entrypoints)
-      await strategy.assemble(outputDir, url, originalHead, Object.keys(pages), runtimeScripts);
+      await strategy.assemble(outputDir, url, originalHead, Object.keys(pages), runtimeScripts, { keepAnalytics: opts?.keepAnalytics });
 
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       console.log(`\n  ✅ Successfully exported in ${elapsed}s!`);
       
       if (strategy.format === 'html') {
-        console.log(`  🚀 Run static preview: cd output/${outputName} && npm run preview`);
-        console.log(`  📁 Or open output/${outputName}/index.html directly in your browser.\n`);
+        console.log(`  🚀 Run static preview: cd output/${displayOutputName} && npm run preview`);
+        console.log(`  📁 Or open output/${displayOutputName}/index.html directly in your browser.\n`);
       } else {
-        console.log(`  🚀 Run dev server: cd output/${outputName} && npm install && npm run dev\n`);
+        console.log(`  🚀 Run dev server: cd output/${displayOutputName} && npm install && npm run dev\n`);
       }
     } catch (err: any) {
       if (err.name === 'ExitPromptError' || err.message?.includes('force closed')) {

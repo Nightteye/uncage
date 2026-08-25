@@ -5,7 +5,7 @@ import { toPascalCase, buildRouteComponentMap } from './parser.js';
 import { synthesizeFramerBreakpoints } from './optimizer.js';
 
 
-export function cleanHead(originalHead: string): { cleanedHead: string; originalTitle: string } {
+export function cleanHead(originalHead: string, options: { keepAnalytics?: boolean } = {}): { cleanedHead: string; originalTitle: string } {
   if (!originalHead) return { cleanedHead: '', originalTitle: 'Uncage React Clone' };
   
   const $ = cheerio.load(`<!DOCTYPE html><html><head>${originalHead}</head><body></body></html>`);
@@ -18,13 +18,19 @@ export function cleanHead(originalHead: string): { cleanedHead: string; original
   $('base').remove();
   // Remove Framer page-bootstrap scripts (cause duplicate declarations on client-side nav)
   $('script[data-framer-page-script]').remove();
+
+  if (!options.keepAnalytics) {
+    // Strip external analytics/tracking scripts by default
+    $('script[src*="googletagmanager"], script[src*="google-analytics"], script[src*="hotjar"], script[src*="clarity.ms"], script[src*="segment.com"], script[src*="connect.facebook.net"]').remove();
+  }
+
   // Remove inline scripts without src (bootstrap code that crashes on re-execution)
   $('script:not([src])').each((_, el) => {
     const content = $(el).html() || '';
-    // Keep analytics/tag-manager type inline scripts
-    if (!content.includes('gtag') && !content.includes('analytics')) {
-      $(el).remove();
+    if (options.keepAnalytics && (content.includes('gtag') || content.includes('analytics') || content.includes('dataLayer'))) {
+      return;
     }
+    $(el).remove();
   });
   
   return { cleanedHead: $('head').html() || '', originalTitle };
@@ -40,7 +46,7 @@ export async function assemble(
   url: string, 
   originalHead: string, 
   routes: string[] = [],
-  options: { typescript?: boolean; runtimeScripts?: string[] } = { typescript: true }
+  options: { typescript?: boolean; runtimeScripts?: string[]; keepAnalytics?: boolean } = { typescript: true }
 ): Promise<void> {
   const isTs = options.typescript !== false;
   const ext = isTs ? 'tsx' : 'jsx';
@@ -180,7 +186,7 @@ export default defineConfig({
   } catch {}
 
 
-  const { cleanedHead, originalTitle } = cleanHead(originalHead);
+  const { cleanedHead, originalTitle } = cleanHead(originalHead, { keepAnalytics: options.keepAnalytics });
 
   // Generate idempotent runtime loader for Framer animation scripts
   const scripts = options.runtimeScripts || [];

@@ -11,7 +11,7 @@ export const reactTsStrategy: ExporterStrategy = {
     await compileToReact(outputDir, pages, { typescript: true });
   },
 
-  async assemble(outputDir: string, targetUrl: string, originalHead: string, routes: string[], runtimeScripts?: string[]): Promise<void> {
-    await assemble(outputDir, targetUrl, originalHead, routes, { typescript: true, runtimeScripts: runtimeScripts || [] });
+  async assemble(outputDir: string, targetUrl: string, originalHead: string, routes: string[], runtimeScripts?: string[], options?: { keepAnalytics?: boolean }): Promise<void> {
+    await assemble(outputDir, targetUrl, originalHead, routes, { typescript: true, runtimeScripts: runtimeScripts || [], keepAnalytics: options?.keepAnalytics });
   }
 };

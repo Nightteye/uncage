@@ -5,7 +5,7 @@ export interface ExporterStrategy {
   format: ExportFormat;
   description: string;
   compile(outputDir: string, pages: Record<string, string>): Promise<void>;
-  assemble(outputDir: string, targetUrl: string, originalHead: string, routes: string[], runtimeScripts?: string[]): Promise<void>;
+  assemble(outputDir: string, targetUrl: string, originalHead: string, routes: string[], runtimeScripts?: string[], options?: { keepAnalytics?: boolean }): Promise<void>;
 }
 
 export interface ExtractorOptions {
