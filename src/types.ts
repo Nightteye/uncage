@@ -4,8 +4,8 @@ export interface ExporterStrategy {
   name: string;
   format: ExportFormat;
   description: string;
-  compile(outputDir: string, pages: Record<string, string>, runtimeScripts?: string[]): Promise<void>;
-  assemble(outputDir: string, targetUrl: string, originalHead: string, routes: string[], runtimeScripts?: string[], options?: { keepAnalytics?: boolean }): Promise<void>;
+  compile(outputDir: string, pages: Record<string, string>, runtimeScripts?: string[] | undefined): Promise<void>;
+  assemble(outputDir: string, targetUrl: string, originalHead: string, routes: string[], runtimeScripts?: string[] | undefined, options?: { keepAnalytics?: boolean | undefined }): Promise<void>;
 }
 
 export interface ExtractorOptions {

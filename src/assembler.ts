@@ -5,7 +5,7 @@ import { toPascalCase, buildRouteComponentMap } from './parser.js';
 import { synthesizeFramerBreakpoints } from './optimizer.js';
 
 
-export function cleanHead(originalHead: string, options: { keepAnalytics?: boolean } = {}): { cleanedHead: string; originalTitle: string } {
+export function cleanHead(originalHead: string, options: { keepAnalytics?: boolean | undefined } = {}): { cleanedHead: string; originalTitle: string } {
   if (!originalHead) return { cleanedHead: '', originalTitle: 'Uncage React Clone' };
   
   const $ = cheerio.load(`<!DOCTYPE html><html><head>${originalHead}</head><body></body></html>`);
@@ -46,7 +46,7 @@ export async function assemble(
   url: string, 
   originalHead: string, 
   routes: string[] = [],
-  options: { typescript?: boolean; runtimeScripts?: string[]; keepAnalytics?: boolean } = { typescript: true }
+  options: { typescript?: boolean | undefined; runtimeScripts?: string[] | undefined; keepAnalytics?: boolean | undefined } = { typescript: true }
 ): Promise<void> {
   const isTs = options.typescript !== false;
   const ext = isTs ? 'tsx' : 'jsx';
