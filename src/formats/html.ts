@@ -157,7 +157,7 @@ export const htmlStrategy: ExporterStrategy = {
     const routeList = routes.map(r => `- [${routeToHtmlFilename(r)}](./${routeToHtmlFilename(r)}) (Source route: \`${r}\`)`).join('\n');
     const readme = `# Static Website Clone
 
-This is a standalone static HTML, CSS, and JS export cloned from **${targetUrl}** using [Uncage](https://github.com/your-org/uncage).
+This is a standalone static HTML, CSS, and JS export cloned from **${targetUrl}** using [Uncage](https://github.com/Nightteye/uncage).
 
 ## 📁 Exported Pages
 ${routeList}
@@ -183,20 +183,31 @@ This folder is 100% static and ready to drag-and-drop to:
 
     await fs.writeFile(path.join(outputDir, 'README.md'), readme);
 
-    // 4. Move public/assets/ to root assets/ (extractor saves to public/ for Vite, but static HTML needs them at root)
+    // 4. Consolidate public/assets/ to root assets/ (idempotent copy + remove)
     const publicAssetsDir = path.join(outputDir, 'public', 'assets');
     const rootAssetsDir = path.join(outputDir, 'assets');
     try {
-      await fs.rename(publicAssetsDir, rootAssetsDir);
-      // Clean up empty public/ directory
-      await fs.rm(path.join(outputDir, 'public'), { recursive: true, force: true }).catch(() => {});
-      console.log('  [Assembler] Moved assets from public/ to root for static serving');
+      const stat = await fs.stat(publicAssetsDir).catch(() => null);
+      if (stat && stat.isDirectory()) {
+        await fs.cp(publicAssetsDir, rootAssetsDir, { recursive: true, force: true });
+        await fs.rm(path.join(outputDir, 'public'), { recursive: true, force: true }).catch(() => {});
+        console.log('  [Assembler] Consolidated assets to root directory for static hosting');
+      }
     } catch (e: any) {
-      // If public/assets doesn't exist (already at root), skip silently
       if (e.code !== 'ENOENT') {
         console.log(`  [Assembler] Warning: Could not move assets: ${e.message}`);
       }
     }
+
+    // 5. Clean up temporary captured-raw*.html files from output directory
+    try {
+      const files = await fs.readdir(outputDir);
+      for (const f of files) {
+        if (f.startsWith('captured-raw') && f.endsWith('.html')) {
+          await fs.unlink(path.join(outputDir, f)).catch(() => {});
+        }
+      }
+    } catch {}
 
     console.log('  [Assembler] Static project files created: package.json, README.md, .gitignore');
   }

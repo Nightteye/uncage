@@ -183,6 +183,9 @@ export default defineConfig({
       combinedHtml += '\n' + content;
     }
     framerBreakpointCss = synthesizeFramerBreakpoints(combinedHtml);
+    for (const f of rawFiles) {
+      await fs.unlink(path.join(outputDir, f)).catch(() => {});
+    }
   } catch {}
 
 
