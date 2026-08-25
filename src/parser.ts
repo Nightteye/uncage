@@ -1,18 +1,13 @@
 import fs from 'fs/promises';
 import path from 'path';
 import * as cheerio from 'cheerio';
+import { STATIC_EXTENSIONS } from './constants.js';
 
 const RESERVED_NAMES = new Set([
-  'Function', 'Object', 'Boolean', 'Number', 'String', 'Symbol', 
+  'Function', 'Object', 'Boolean', 'Number', 'String', 'Symbol',
   'Array', 'Date', 'Error', 'Map', 'Set', 'Promise', 'RegExp',
   'Package', 'Default', 'Import', 'Export', 'Switch', 'Case',
   'React', 'Link', 'Helmet', 'Component', 'Fragment'
-]);
-
-const STATIC_EXTENSIONS = new Set([
-  'pdf', 'zip', 'tar', 'gz', 'doc', 'docx', 'xlsx', 'xml',
-  'png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'svg', 'ico',
-  'mp4', 'webm', 'mp3', 'wav', 'ogg'
 ]);
 
 // Helper to camelCase CSS properties and SVG attributes
@@ -293,7 +288,9 @@ export function nodeToJsx(el: any, $: any, indent = ''): { jsx: string; usesLink
     return { jsx: `${indent}{/* ${safeComment} */}\n`, usesLink: false };
   }
   
-  if (el.type !== 'tag' && el.type !== 'style') {
+  // domhandler types <script> nodes as 'script' (not 'tag'); let them through so
+  // the script branch below can emit inline body scripts
+  if (el.type !== 'tag' && el.type !== 'style' && el.type !== 'script') {
     return { jsx: '', usesLink: false };
   }
 
@@ -331,17 +328,15 @@ export function nodeToJsx(el: any, $: any, indent = ''): { jsx: string; usesLink
       continue;
     }
 
-    if (lowerKey === 'style') {
+    if (key.startsWith('data-') || key.startsWith('aria-')) {
+      propName = key;
+    } else if (lowerKey === 'style') {
       propValue = `{${parseStyle(value)}}`;
     } else if (lowerKey === 'tabindex') {
       const parsed = parseInt(value, 10);
       propValue = isNaN(parsed) ? '{undefined}' : `{${parsed}}`;
     } else if (isInsideSvg || svgCamelCaseMap[lowerKey]) {
       propName = svgCamelCaseMap[lowerKey] || htmlAttrMap[lowerKey] || toCamelCase(key);
-    } else if (key.includes('-')) {
-      if (key.startsWith('data-') || key.startsWith('aria-')) {
-        propName = key;
-      }
     }
 
     if (tagName === 'a' && lowerKey === 'href') {
