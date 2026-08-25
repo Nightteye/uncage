@@ -401,6 +401,15 @@ export async function extract(
 function rewriteHtml(html: string, pageUrl: string, assetMap: AssetMap, baseOrigin: string): string {
   let result = html;
 
+  // Protect inline script contents from blind wholesale URL string replacements
+  const scriptContents: string[] = [];
+  result = result.replace(/(<script\b[^>]*>)([\s\S]*?)(<\/script>)/gi, (match, openTag, innerContent, closeTag) => {
+    if (!innerContent.trim()) return match;
+    const placeholder = `__UNCAGE_SCRIPT_CONTENT_${scriptContents.length}__`;
+    scriptContents.push(innerContent);
+    return `${openTag}${placeholder}${closeTag}`;
+  });
+
   // 1. Sort URLs by length descending to prevent prefix collision
   const sortedUrls = Object.keys(assetMap).sort((a, b) => b.length - a.length);
   for (const remoteUrl of sortedUrls) {
@@ -432,9 +441,9 @@ function rewriteHtml(html: string, pageUrl: string, assetMap: AssetMap, baseOrig
     return match;
   });
 
-  // 3. Rewrite srcset attributes
+  // 3. Rewrite srcset attributes (split on comma followed by whitespace to avoid breaking URLs with commas)
   result = result.replace(/(srcset\s*=\s*["'])([^"']+)(["'])/gi, (match, prefix, content, suffix) => {
-    const rewrittenEntries = content.split(',').map((entry: string) => {
+    const rewrittenEntries = content.split(/,\s+/).map((entry: string) => {
       const trimmed = entry.trim();
       const parts = trimmed.split(/\s+/);
       const url = parts[0] || '';
@@ -444,13 +453,16 @@ function rewriteHtml(html: string, pageUrl: string, assetMap: AssetMap, baseOrig
       try {
         const resolved = new URL(url, pageUrl).href;
         if (assetMap[resolved]) rewrittenUrl = assetMap[resolved]!;
+        else {
+          const noQuery = resolved.split('?')[0];
+          if (noQuery && assetMap[noQuery]) rewrittenUrl = assetMap[noQuery]!;
+        }
       } catch {}
       
       return descriptor ? `${rewrittenUrl} ${descriptor}` : rewrittenUrl;
     });
     return `${prefix}${rewrittenEntries.join(', ')}${suffix}`;
   });
-
 
   // 4. Rewrite inline CSS url()
   result = result.replace(/url\(["']?(https?:\/\/[^"')]+)["']?\)/g, (match, remoteUrl) => {
@@ -460,6 +472,15 @@ function rewriteHtml(html: string, pageUrl: string, assetMap: AssetMap, baseOrig
     const fullUrl = `${baseOrigin}${rootPath.startsWith('/') ? rootPath : '/' + rootPath}`;
     return assetMap[fullUrl] ? `url("${assetMap[fullUrl]}")` : match;
   });
+  result = result.replace(/url\(\s*["']?(?!data:|https?:|\/\/|\/)(\.\.?\/[^"')]+|[^"')\s/][^"')]+)["']?\s*\)/g, (match, relPath) => {
+    try {
+      const resolved = new URL(relPath, pageUrl).href;
+      if (assetMap[resolved]) return `url("${assetMap[resolved]}")`;
+      const noQuery = resolved.split('?')[0];
+      if (noQuery && assetMap[noQuery]) return `url("${assetMap[noQuery]}")`;
+    } catch {}
+    return match;
+  });
 
   // 5. Remove tracking and bot scripts
   result = result.replace(/<script\b[^>]*>[^<]*__CF\$cv\$params[\s\S]*?<\/script>/gi, '');
@@ -467,6 +488,11 @@ function rewriteHtml(html: string, pageUrl: string, assetMap: AssetMap, baseOrig
   result = result.replace(/<script[^>]*cdn-cgi[^>]*>[\s\S]*?<\/script>/gi, '');
   result = result.replace(/<script[^>]*cf-beacon[^>]*>[\s\S]*?<\/script>/gi, '');
   result = result.replace(/<link[^>]*cdn-cgi[^>]*>/gi, '');
+
+  // Restore protected inline script contents
+  result = result.replace(/__UNCAGE_SCRIPT_CONTENT_(\d+)__/g, (_, idx) => {
+    return scriptContents[Number(idx)] ?? '';
+  });
 
   return result;
 }
