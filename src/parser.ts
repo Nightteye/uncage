@@ -286,7 +286,7 @@ export const booleanAttrs = new Set([
   'disabled', 'checked', 'readonly', 'autoplay', 'loop', 'muted',
   'required', 'multiple', 'open', 'autofocus', 'novalidate', 'playsinline',
   'controls', 'default', 'defer', 'async', 'hidden', 'ismap', 'itemscope',
-  'nomodule', 'reversed', 'selected', 'allowfullscreen', 'formnovalidate', 'inert'
+  'nomodule', 'reversed', 'selected', 'allowfullscreen', 'formnovalidate', 'inert', 'download'
 ]);
 
 // Self-closing tags in JSX
@@ -407,7 +407,8 @@ export function nodeToJsx(el: any, $: any, indent = ''): { jsx: string; usesLink
       } else if (value === 'false') {
         attrs += ` ${propName}={false}`;
       } else {
-        attrs += ` ${propName}={true}`;
+        // Valued attribute like hidden="until-found" or download="file.pdf"
+        attrs += ` ${propName}=${JSON.stringify(value)}`;
       }
     } else if (propValue.startsWith('{') && propValue.endsWith('}')) {
       attrs += ` ${propName}=${propValue}`;
