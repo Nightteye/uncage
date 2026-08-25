@@ -8,6 +8,9 @@ output/
 dist/
 build/
 out/
+*.zip
+*.tar.gz
+*.tgz
 .temp*
 *.tmp
 *.temp
