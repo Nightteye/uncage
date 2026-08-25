@@ -6,26 +6,11 @@ import * as cheerio from 'cheerio';
 import type { Route } from 'playwright';
 import type { ExtractorOptions } from './types.js';
 import { optimizeImages } from './optimizer.js';
+import { STATIC_EXTENSIONS, sanitizeFileName } from './constants.js';
 
 
 interface AssetMap {
   [remoteUrl: string]: string;
-}
-
-const STATIC_EXTENSIONS = new Set([
-  'png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'svg', 'ico',
-  'css', 'js', 'mjs', 'wasm', 'json',
-  'woff', 'woff2', 'ttf', 'otf', 'eot',
-  'mp4', 'webm', 'ogg', 'mp3', 'wav',
-  'pdf', 'zip', 'tar', 'gz', 'doc', 'docx', 'xlsx', 'xml'
-]);
-
-function sanitizeFileName(name: string): string {
-  let sanitized = name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
-  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i.test(sanitized)) {
-    sanitized = `_${sanitized}`;
-  }
-  return sanitized;
 }
 
 export async function extract(
@@ -72,6 +57,7 @@ export async function extract(
 
   const cleanupBrowser = async () => {
     try { await browser.close(); } catch {}
+    process.exit(130);
   };
   process.on('SIGINT', cleanupBrowser);
   process.on('SIGTERM', cleanupBrowser);
@@ -92,11 +78,13 @@ export async function extract(
         return;
       }
 
-      try {
-        // Mark in-flight eagerly to prevent concurrent duplicate downloads
-        const shouldDownload = !assetMap[requestUrl] && !inFlightDownloads.has(requestUrl);
-        if (shouldDownload) inFlightDownloads.add(requestUrl);
+      // Mark in-flight eagerly to prevent concurrent duplicate downloads.
+      // Must always be cleared (finally below), even when the response is skipped
+      // or fails — otherwise the URL is permanently blocked from future downloads.
+      const shouldDownload = !assetMap[requestUrl] && !inFlightDownloads.has(requestUrl);
+      if (shouldDownload) inFlightDownloads.add(requestUrl);
 
+      try {
         const response = await route.fetch();
         const headers = response.headers();
 
@@ -139,43 +127,41 @@ export async function extract(
         }
 
         if (targetDir && shouldDownload && response.ok()) {
-          try {
-            const body = await response.body();
-            const parsedUrl = new URL(requestUrl);
-            const rawName = path.basename(parsedUrl.pathname) || 'asset';
-            const ext = guessExtension(resourceType, headers['content-type'] || '', rawName);
-            const urlHash = crypto.createHash('md5').update(requestUrl).digest('hex').slice(0, 8);
+          const body = await response.body();
+          const parsedUrl = new URL(requestUrl);
+          const rawName = path.basename(parsedUrl.pathname) || 'asset';
+          const ext = guessExtension(resourceType, headers['content-type'] || '', rawName);
+          const urlHash = crypto.createHash('md5').update(requestUrl).digest('hex').slice(0, 8);
 
-            let baseName = rawName.includes('.') ? rawName.substring(0, rawName.lastIndexOf('.')) : rawName;
-            baseName = sanitizeFileName(baseName) || 'asset';
-            const fileName = `${baseName}-${urlHash}${ext}`;
+          let baseName = rawName.includes('.') ? rawName.substring(0, rawName.lastIndexOf('.')) : rawName;
+          baseName = sanitizeFileName(baseName) || 'asset';
+          const fileName = `${baseName}-${urlHash}${ext}`;
 
-            const savePath = path.join(targetDir, fileName);
-            await fs.writeFile(savePath, body);
-            
-            const relativePath = `/assets/${path.basename(targetDir)}/${fileName}`;
-            assetMap[requestUrl] = relativePath;
+          const savePath = path.join(targetDir, fileName);
+          await fs.writeFile(savePath, body);
 
-            // Track Framer runtime chunks for animation preservation
-            if (targetDir === jsDir && RUNTIME_PATTERNS.some(p => p.test(fileName))) {
-              if (!runtimeScripts.includes(relativePath)) {
-                runtimeScripts.push(relativePath);
-              }
+          const relativePath = `/assets/${path.basename(targetDir)}/${fileName}`;
+          assetMap[requestUrl] = relativePath;
+
+          // Track Framer runtime chunks for animation preservation
+          if (targetDir === jsDir && RUNTIME_PATTERNS.some(p => p.test(fileName))) {
+            if (!runtimeScripts.includes(relativePath)) {
+              runtimeScripts.push(relativePath);
             }
-          } finally {
-            inFlightDownloads.delete(requestUrl);
           }
         }
 
         // Fulfill with the decoded body to avoid content-encoding mismatch
         const fulfilBody = await response.body();
-        await route.fulfill({ 
+        await route.fulfill({
           status: response.status(),
           headers,
           body: fulfilBody
         });
       } catch {
         await route.continue().catch(() => {});
+      } finally {
+        if (shouldDownload) inFlightDownloads.delete(requestUrl);
       }
     });
 
@@ -385,8 +371,6 @@ export async function extract(
     // Rewrite downloaded CSS files
     await rewriteCssFiles(cssDir, assetMap, baseOrigin);
 
-    await fs.writeFile(path.join(outputDir, 'asset-map.json'), JSON.stringify(assetMap, null, 2));
-
     // Optimize harvested images
     await optimizeImages(imgDir);
 
@@ -400,13 +384,17 @@ export async function extract(
     // Rewrite downloaded JS files (must run after downloadMissingDeps to rewrite all chunks)
     await rewriteJsFiles(outputDir, assetMap, baseOrigin);
 
+    // Write final asset map to disk after all dynamic dependencies have been discovered
+    await fs.writeFile(path.join(outputDir, 'asset-map.json'), JSON.stringify(assetMap, null, 2));
+
     return { pages, outputDir, originalHead, runtimeScripts };
 
 
   } finally {
     process.removeListener('SIGINT', cleanupBrowser);
     process.removeListener('SIGTERM', cleanupBrowser);
-    await browser.close();
+    // SIGINT may have closed the browser already; never let a second close() mask the original error
+    try { await browser.close(); } catch {}
   }
 }
 
