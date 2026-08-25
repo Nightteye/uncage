@@ -566,7 +566,7 @@ async function downloadMissingDeps(outputDir: string, assetMap: AssetMap, baseOr
   const maxDepth = 5;
 
   for (let depth = 0; depth < maxDepth; depth++) {
-    const needed = new Map<string, string>(); // remoteUrl -> depFileName
+    const needed = new Set<string>();
     let jsFiles: string[] = [];
     try {
       jsFiles = await fs.readdir(jsDir);
@@ -585,18 +585,16 @@ async function downloadMissingDeps(outputDir: string, assetMap: AssetMap, baseOr
         let depName = match[2];
         if (!depName) continue;
         if (!downloaded.has(depName) && !attempted.has(depName)) {
-          needed.set(depName, depName);
+          needed.add(depName);
         }
       }
     }
 
     if (needed.size === 0) break;
 
-
     let passFetched = 0;
 
-    for (const [depName, rawDep] of needed) {
-
+    for (const depName of needed) {
       attempted.add(depName);
       if (!baseOrigin) continue;
 
@@ -604,11 +602,10 @@ async function downloadMissingDeps(outputDir: string, assetMap: AssetMap, baseOr
       let success = false;
 
       for (let attempt = 1; attempt <= 3; attempt++) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
         try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 10000);
           const res = await fetch(remoteUrl, { signal: controller.signal });
-          clearTimeout(timeout);
           
           if (res.ok) {
             const buffer = await res.arrayBuffer();
@@ -626,15 +623,18 @@ async function downloadMissingDeps(outputDir: string, assetMap: AssetMap, baseOr
             passFetched++;
             success = true;
             break;
+          } else {
+            try { await res.body?.cancel(); } catch {}
           }
-        } catch {}
+        } catch {
+        } finally {
+          clearTimeout(timeout);
+        }
 
         if (!success && attempt < 3) {
           await new Promise(r => setTimeout(r, 400 * Math.pow(2, attempt - 1)));
         }
       }
-
-
     }
 
     if (passFetched > 0) {
