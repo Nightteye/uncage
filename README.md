@@ -1,13 +1,21 @@
-# Uncage
+<p align="center">
+  <img src="./media/logo.svg" alt="Uncage Logo" width="120" height="120" />
+</p>
 
-> **Clone any Framer, Webflow, or modern website into clean, production-ready React or Static HTML code.**  
-> 100% free, open-source, and runs locally on your machine. No paywalls, no subscriptions, and no limits.
+<h1 align="center">Uncage</h1>
 
-[![Status: Beta](https://img.shields.io/badge/Status-Public%20Beta-orange.svg)](https://github.com/Nightteye/uncage/issues)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-green.svg)](https://nodejs.org/)
-[![Vite](https://img.shields.io/badge/Vite-6.x-646cff.svg)](https://vitejs.dev/)
-[![React](https://img.shields.io/badge/React-18.x-61dafb.svg)](https://react.dev/)
+<p align="center">
+  <strong>Clone any Framer, Webflow, or modern website into clean, production-ready React or Static HTML code.</strong><br>
+  100% free, open-source, and runs locally on your machine. No paywalls, no subscriptions, and no limits.
+</p>
+
+<p align="center">
+  <a href="https://github.com/Nightteye/uncage/issues"><img src="https://img.shields.io/badge/Status-Public%20Beta-orange.svg" alt="Status: Beta"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-%3E%3D18.0.0-green.svg" alt="Node.js"></a>
+  <a href="https://vitejs.dev/"><img src="https://img.shields.io/badge/Vite-6.x-646cff.svg" alt="Vite"></a>
+  <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-18.x-61dafb.svg" alt="React"></a>
+</p>
 
 ---
 
