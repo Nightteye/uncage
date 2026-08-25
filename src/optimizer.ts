@@ -24,11 +24,12 @@ export async function optimizeExtractedCss(outputDir: string, pages: Record<stri
     if (!file.endsWith('.css')) continue;
     const filePath = path.join(cssDir, file);
     
+    const jsGlob = path.join(outputDir, 'public', 'assets', 'js', '*.{js,mjs}').replace(/\\/g, '/');
     try {
       const purgeResult = await new PurgeCSS().purge({
-        content: [tempHtmlPath],
+        content: [tempHtmlPath, jsGlob],
         css: [filePath],
-        safelist: [/^(:|::-webkit-|::-moz-|::-ms-|::-o-)/, /^framer-/, /^w-/]
+        safelist: [/^(:|::-webkit-|::-moz-|::-ms-|::-o-)/, /^framer-/, /^w-/, /^motion-/, /^animate-/, /^state-/, /active/, /visible/, /hidden/]
       });
 
       if (purgeResult && purgeResult[0]) {
