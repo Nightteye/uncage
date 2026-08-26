@@ -62,3 +62,6 @@ playwright/.cache/
 .gemini/
 .agent/
 .system_generated/
+
+# ZCode local config
+.zcode/

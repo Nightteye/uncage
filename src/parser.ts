@@ -376,7 +376,10 @@ export function nodeToJsx(el: any, $: any, indent = '', currentRoute = '/'): { j
         value.startsWith('#') || 
         value.startsWith('javascript:');
 
-      const isStaticAsset = value.startsWith('/assets/') || Array.from(STATIC_EXTENSIONS).some(ext => value.toLowerCase().endsWith(`.${ext}`));
+      // Strip ?query/#fragment before the extension test — cache-busted assets
+      // like logo.png?v=2 must still be detected as static assets
+      const pathOnly = value.toLowerCase().split(/[?#]/)[0] || '';
+      const isStaticAsset = value.startsWith('/assets/') || Array.from(STATIC_EXTENSIONS).some(ext => pathOnly.endsWith(`.${ext}`));
 
 
       if (!isExternal && !isDownload && !isInsideSvg && !isStaticAsset) {
@@ -384,9 +387,10 @@ export function nodeToJsx(el: any, $: any, indent = '', currentRoute = '/'): { j
         propName = 'to';
 
         let targetRoute = value.trim();
-        const hashMatch = targetRoute.match(/^([^#]*)(#.*)$/);
-        let pathPart = (hashMatch ? hashMatch[1] : targetRoute) || '';
-        const hashPart = (hashMatch ? hashMatch[2] : '') || '';
+        // Split off query AND fragment; both must survive into the router target
+        const tailMatch = targetRoute.match(/^([^?#]*)([?#].*)?$/);
+        let pathPart = (tailMatch ? tailMatch[1] : targetRoute) || '';
+        const tail = (tailMatch ? tailMatch[2] : '') || '';
 
         // Resolve relative links (e.g. "../about", "./team") against current page route
         if (!pathPart.startsWith('/')) {
@@ -399,10 +403,10 @@ export function nodeToJsx(el: any, $: any, indent = '', currentRoute = '/'): { j
 
         pathPart = pathPart.replace(/^\.?\//, '').replace(/^\/+/, '');
         if (pathPart === '' || pathPart === '.' || pathPart === 'index' || pathPart === 'index.html') {
-          targetRoute = '/' + hashPart;
+          targetRoute = '/' + tail;
         } else {
           pathPart = pathPart.replace(/\.html$/i, '');
-          targetRoute = '/' + pathPart + hashPart;
+          targetRoute = '/' + pathPart + tail;
         }
         propValue = JSON.stringify(targetRoute);
       }

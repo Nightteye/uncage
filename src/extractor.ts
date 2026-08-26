@@ -13,6 +13,17 @@ interface AssetMap {
   [remoteUrl: string]: string;
 }
 
+// Patterns for Framer runtime bundles that power animations (module-level so both
+// the crawl-phase route handler and the post-crawl dependency scanner can use it)
+const RUNTIME_PATTERNS = [
+  /\bframer\b.*\.js$/i,
+  /\bmotion\b.*\.js$/i,
+  /\breact\b.*\.js$/i,
+  /\bshared-lib\b.*\.js$/i,
+  /\brolldown-runtime\b.*\.js$/i,
+  /\bscript_main\b.*\.js$/i,
+];
+
 export async function extract(
   baseUrl: string, 
   outputName: string, 
@@ -37,16 +48,6 @@ export async function extract(
   const assetMap: AssetMap = {};
   const inFlightDownloads = new Set<string>();
   const runtimeScripts: string[] = [];  // Framer/motion runtime JS chunks to preserve
-
-  // Patterns for Framer runtime bundles that power animations
-  const RUNTIME_PATTERNS = [
-    /\bframer\b.*\.js$/i,
-    /\bmotion\b.*\.js$/i,
-    /\breact\b.*\.js$/i,
-    /\bshared-lib\b.*\.js$/i,
-    /\brolldown-runtime\b.*\.js$/i,
-    /\bscript_main\b.*\.js$/i,
-  ];
 
   const isHeadless = options.headless !== false;
   console.log(`  [1/5] Launching stealth browser (${isHeadless ? 'headless' : 'headful'})...`);
@@ -126,8 +127,10 @@ export async function extract(
           }
         }
 
+        let savedBody: Buffer | null = null;
         if (targetDir && shouldDownload && response.ok()) {
           const body = await response.body();
+          savedBody = body;
           const parsedUrl = new URL(requestUrl);
           const rawName = path.basename(parsedUrl.pathname) || 'asset';
           const ext = guessExtension(resourceType, headers['content-type'] || '', rawName);
@@ -151,8 +154,9 @@ export async function extract(
           }
         }
 
-        // Fulfill with the decoded body to avoid content-encoding mismatch
-        const fulfilBody = await response.body();
+        // Fulfill with the decoded body to avoid content-encoding mismatch;
+        // reuse the buffer already materialized for the save path when present
+        const fulfilBody = savedBody ?? await response.body();
         await route.fulfill({
           status: response.status(),
           headers,
@@ -169,11 +173,13 @@ export async function extract(
     const visited = new Set<string>();
     const baseUrlObj = new URL(baseUrl);
     const baseOrigin = baseUrlObj.origin;
-    const initialPath = baseUrlObj.pathname.replace(/\/$/, '') || '/';
+    // Keep the seed's own trailing slash to avoid a pointless server redirect
+    const initialPath = baseUrlObj.pathname || '/';
     const initialUrl = `${baseOrigin}${initialPath}${baseUrlObj.search || ''}`;
     const queue = [initialUrl];
     const pages: Record<string, string> = {};
     let originalHead = '';
+    let headSourceUrl = '';
     const maxPages = options.maxPages ?? 50;
     const pageTimeout = options.timeout ?? 30000;
 
@@ -201,14 +207,19 @@ export async function extract(
         // Smoothly scroll down to trigger IntersectionObservers, lazy-loaded media, and scroll animations
         await page.evaluate(async () => {
           const step = Math.max(300, Math.floor(window.innerHeight / 2));
+          // SPAs may scroll on body, documentElement, or a wrapper — measure both roots
+          const pageHeight = () => Math.max(
+            document.body ? document.body.scrollHeight : 0,
+            document.documentElement ? document.documentElement.scrollHeight : 0
+          );
           let current = 0;
-          let maxScroll = document.body.scrollHeight;
+          let maxScroll = pageHeight();
           while (current <= maxScroll && current < 50000) {
             window.scrollTo(0, current);
             window.dispatchEvent(new Event('scroll'));
             await new Promise(r => setTimeout(r, 80));
             current += step;
-            maxScroll = Math.max(maxScroll, document.body.scrollHeight);
+            maxScroll = Math.max(maxScroll, pageHeight());
           }
           await new Promise(r => setTimeout(r, 300));
           window.scrollTo(0, 0);
@@ -306,6 +317,7 @@ export async function extract(
           const headMatch = html.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
           if (headMatch && headMatch[1]) {
             originalHead = headMatch[1];
+            headSourceUrl = currentUrl;
           }
         }
 
@@ -377,7 +389,9 @@ export async function extract(
     }
 
     if (originalHead) {
-      originalHead = rewriteHtml(originalHead, baseOrigin, assetMap, baseOrigin);
+      // Resolve relative refs against the page the head was captured from —
+      // a seed like /blog/post has head-relative urls() that must not resolve to root
+      originalHead = rewriteHtml(originalHead, headSourceUrl || baseOrigin, assetMap, baseOrigin);
     }
 
     // Rewrite downloaded CSS files
@@ -388,7 +402,7 @@ export async function extract(
 
     if (!options.skipDeps) {
       console.log('  [5/5] Scanning JS modules for missing dependencies...');
-      await downloadMissingDeps(outputDir, assetMap, baseOrigin);
+      await downloadMissingDeps(outputDir, assetMap, baseOrigin, runtimeScripts);
     } else {
       console.log('  [5/5] Skipping recursive JS module dependency scan (--skip-deps)');
     }
@@ -412,6 +426,15 @@ export async function extract(
 
 function rewriteHtml(html: string, pageUrl: string, assetMap: AssetMap, baseOrigin: string): string {
   let result = html;
+
+  // Remove tracking and bot scripts BEFORE inline-script content is replaced with
+  // placeholders — the CF beacon pattern matches on script body text and would
+  // otherwise never match a placeholder.
+  result = result.replace(/<script\b[^>]*>[^<]*__CF\$cv\$params[\s\S]*?<\/script>/gi, '');
+  result = result.replace(/<iframe[^>]*visibility:\s*hidden[^>]*>[\s\S]*?<\/iframe>/gi, '');
+  result = result.replace(/<script[^>]*cdn-cgi[^>]*>[\s\S]*?<\/script>/gi, '');
+  result = result.replace(/<script[^>]*cf-beacon[^>]*>[\s\S]*?<\/script>/gi, '');
+  result = result.replace(/<link[^>]*cdn-cgi[^>]*>/gi, '');
 
   // Protect inline script contents from blind wholesale URL string replacements
   const scriptContents: string[] = [];
@@ -449,6 +472,17 @@ function rewriteHtml(html: string, pageUrl: string, assetMap: AssetMap, baseOrig
     const fullUrl = `${baseOrigin}/${filePath}`;
     if (assetMap[fullUrl]) {
       return `${attr}="${assetMap[fullUrl]}"`;
+    }
+    return match;
+  });
+
+  // 2.5 Rewrite protocol-relative asset URLs (//cdn.example.com/lib.js)
+  result = result.replace(/(src|href|poster)=["'](\/\/[^"']+)["']/g, (match, attr, protoRel) => {
+    for (const scheme of ['https:', 'http:']) {
+      const mapped = assetMap[`${scheme}${protoRel}`];
+      if (mapped) {
+        return `${attr}="${mapped}"`;
+      }
     }
     return match;
   });
@@ -493,13 +527,6 @@ function rewriteHtml(html: string, pageUrl: string, assetMap: AssetMap, baseOrig
     } catch {}
     return match;
   });
-
-  // 5. Remove tracking and bot scripts
-  result = result.replace(/<script\b[^>]*>[^<]*__CF\$cv\$params[\s\S]*?<\/script>/gi, '');
-  result = result.replace(/<iframe[^>]*visibility:\s*hidden[^>]*>[\s\S]*?<\/iframe>/gi, '');
-  result = result.replace(/<script[^>]*cdn-cgi[^>]*>[\s\S]*?<\/script>/gi, '');
-  result = result.replace(/<script[^>]*cf-beacon[^>]*>[\s\S]*?<\/script>/gi, '');
-  result = result.replace(/<link[^>]*cdn-cgi[^>]*>/gi, '');
 
   // Restore protected inline script contents
   result = result.replace(/__UNCAGE_SCRIPT_CONTENT_(\d+)__/g, (_, idx) => {
@@ -554,7 +581,10 @@ async function rewriteCssFiles(cssDir: string, assetMap: AssetMap, baseOrigin: s
 
       await fs.writeFile(filePath, content);
     }
-  } catch {}
+  } catch (e: any) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.log(`        Warning: CSS rewrite pass failed: ${msg}`);
+  }
 }
 
 async function rewriteJsFiles(outputDir: string, assetMap: AssetMap, baseOrigin: string): Promise<void> {
@@ -597,14 +627,16 @@ async function rewriteJsFiles(outputDir: string, assetMap: AssetMap, baseOrigin:
   }
 }
 
-async function downloadMissingDeps(outputDir: string, assetMap: AssetMap, baseOrigin: string): Promise<void> {
+async function downloadMissingDeps(outputDir: string, assetMap: AssetMap, baseOrigin: string, runtimeScripts: string[]): Promise<void> {
   const jsDir = path.join(outputDir, 'public', 'assets', 'js');
-  const downloaded = new Set(Object.values(assetMap).map(p => path.basename(p)));
+  // Remote URLs already harvested — keys of the map ARE the absolute request URLs
+  const downloadedRemote = new Set(Object.keys(assetMap));
   const attempted = new Set<string>();
   const maxDepth = 5;
 
   for (let depth = 0; depth < maxDepth; depth++) {
-    const needed = new Set<string>();
+    // resolved remote URL -> nothing extra needed (basename derivable from URL)
+    const needed = new Map<string, void>();
     let jsFiles: string[] = [];
     try {
       jsFiles = await fs.readdir(jsDir);
@@ -614,17 +646,25 @@ async function downloadMissingDeps(outputDir: string, assetMap: AssetMap, baseOr
 
     for (const file of jsFiles) {
       if (!file.endsWith('.js') && !file.endsWith('.mjs')) continue;
-      
+
       const content = await fs.readFile(path.join(jsDir, file), 'utf-8');
-      
-      const importRegex = /(["'])(?:\.\/|\.\.\/)([^"']+\.(?:mjs|js))(?:\?[^"']*)?\1/g;
+
+      // Resolve each relative import against ITS importing module's own remote URL,
+      // mirroring rewriteJsFiles so both agree on asset-map keys
+      const jsAssetEntry = Object.entries(assetMap).find(([, local]) => local && path.basename(local) === file);
+      const importerRemoteUrl = jsAssetEntry ? jsAssetEntry[0] : null;
+
+      const importRegex = /(["'])(\.{1,2}\/[^"']+\.(?:mjs|js))(?:\?[^"']*)?\1/g;
       let match;
       while ((match = importRegex.exec(content)) !== null) {
-        let depName = match[2];
-        if (!depName) continue;
-        if (!downloaded.has(depName) && !attempted.has(depName)) {
-          needed.add(depName);
-        }
+        try {
+          const specWithoutQuery = match[2] ?? '';
+          const fullMatchInner = match[0].slice(1, -1);
+          const resolvedUrl = new URL(fullMatchInner.includes('?') ? specWithoutQuery : fullMatchInner, importerRemoteUrl || `${baseOrigin}/`).href;
+          if (!downloadedRemote.has(resolvedUrl) && !attempted.has(resolvedUrl)) {
+            needed.set(resolvedUrl, undefined);
+          }
+        } catch {}
       }
     }
 
@@ -632,44 +672,58 @@ async function downloadMissingDeps(outputDir: string, assetMap: AssetMap, baseOr
 
     let passFetched = 0;
 
-    for (const depName of needed) {
-      attempted.add(depName);
-      if (!baseOrigin) continue;
+    for (const remoteUrl of needed.keys()) {
+      attempted.add(remoteUrl);
 
-      const remoteUrl = `${baseOrigin}/${depName}`;
       let success = false;
 
       for (let attempt = 1; attempt <= 3; attempt++) {
+        let transientFailure = false;
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 10000);
         try {
-          const res = await fetch(remoteUrl, { signal: controller.signal });
-          
+          const res = await fetch(remoteUrl, {
+            signal: controller.signal,
+            headers: {
+              'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+              'referer': baseOrigin + '/',
+            },
+          });
+
           if (res.ok) {
             const buffer = await res.arrayBuffer();
             const urlHash = crypto.createHash('md5').update(remoteUrl).digest('hex').substring(0, 8);
-            
-            const rawName = path.basename(depName);
+
+            const parsedDep = new URL(remoteUrl);
+            const rawName = path.basename(parsedDep.pathname);
             let baseName = rawName.includes('.') ? rawName.substring(0, rawName.lastIndexOf('.')) : rawName;
             const ext = rawName.includes('.') ? rawName.substring(rawName.lastIndexOf('.')) : '.js';
             const savedFileName = `${sanitizeFileName(baseName)}-${urlHash}${ext}`;
 
             await fs.writeFile(path.join(jsDir, savedFileName), Buffer.from(buffer));
-            downloaded.add(depName);
-            downloaded.add(savedFileName);
+            downloadedRemote.add(remoteUrl);
             assetMap[remoteUrl] = `/assets/js/${savedFileName}`;
+
+            // Track Framer/motion runtime chunks discovered transitively too
+            if (RUNTIME_PATTERNS.some(p => p.test(savedFileName)) && !runtimeScripts.includes(`/assets/js/${savedFileName}`)) {
+              runtimeScripts.push(`/assets/js/${savedFileName}`);
+            }
             passFetched++;
             success = true;
             break;
           } else {
             try { await res.body?.cancel(); } catch {}
+            // Only transient statuses deserve the retry ladder; 404/403 are terminal
+            transientFailure = res.status === 408 || res.status === 429 || res.status >= 500;
           }
         } catch {
+          transientFailure = true;
         } finally {
           clearTimeout(timeout);
         }
 
-        if (!success && attempt < 3) {
+        if (success || !transientFailure) break;
+        if (attempt < 3) {
           await new Promise(r => setTimeout(r, 400 * Math.pow(2, attempt - 1)));
         }
       }

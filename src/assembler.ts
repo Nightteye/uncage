@@ -36,6 +36,26 @@ export function cleanHead(originalHead: string, options: { keepAnalytics?: boole
   return { cleanedHead: $('head').html() || '', originalTitle };
 }
 
+/**
+ * Remove third-party analytics/tracking scripts from a whole document (head AND body).
+ * Used by the static HTML strategy, which copies crawled pages verbatim and therefore
+ * ships gtag/hotjar/etc. unless stripped here. Mirrors cleanHead's defaults.
+ */
+export function stripTrackers($: cheerio.CheerioAPI, keepAnalytics = false): void {
+  if (!keepAnalytics) {
+    $('script[src*="googletagmanager"], script[src*="google-analytics"], script[src*="hotjar"], script[src*="clarity.ms"], script[src*="segment.com"], script[src*="connect.facebook.net"]').remove();
+  }
+
+  $('script:not([src])').each((_, el) => {
+    const content = $(el).html() || '';
+    const isAnalytics = content.includes('gtag(') || content.includes('googletagmanager') || content.includes('dataLayer') ||
+      content.includes('hotjar') || content.includes('clarity') || content.includes('fbq(') || content.includes('_paq');
+    if (keepAnalytics && isAnalytics) return;
+    // Bootstrap inline scripts are needed for rendering fidelity — only drop trackers here
+    if (isAnalytics) $(el).remove();
+  });
+}
+
 
 /**
  * Scaffold a Vite React project (TypeScript or JavaScript) around the extracted files
@@ -195,7 +215,8 @@ export default defineConfig({
   const scripts = options.runtimeScripts || [];
   let runtimeLoaderScript = '';
   if (scripts.length > 0) {
-    const scriptArray = JSON.stringify(scripts);
+    // < is never valid in a JSON string literal context inside <script> unescaped
+    const scriptArray = JSON.stringify(scripts).replace(/</g, '\\u003c');
     runtimeLoaderScript = `
     <script data-uncage-runtime>
       (function() {
@@ -213,9 +234,12 @@ export default defineConfig({
     </script>`;
   }
 
-  const safeTitle = originalTitle.replace(/<\/(title|style|script)/gi, '<\\/$1');
-  const safeHead = cleanedHead.replace(/<\/(title|style|script)/gi, '<\\/$1');
-  const safeCss = framerBreakpointCss.replace(/<\/(title|style|script)/gi, '<\\/$1');
+  // Escape only against the container each value is injected into.
+  // cleanedHead must NOT be escaped: it is cheerio parse→serialize output, so any
+  // breakout sequence was already normalized into real elements during parsing —
+  // blanket-escaping </script> here corrupts retained script elements and breaks rendering.
+  const safeTitle = originalTitle.replace(/<\/title/gi, '<\\/title');
+  const safeCss = framerBreakpointCss.replace(/<\/style/gi, '<\\/style');
 
   const indexHtml = `<!doctype html>
 <html lang="en">
@@ -223,7 +247,7 @@ export default defineConfig({
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${safeTitle}</title>
-    ${safeHead}
+    ${cleanedHead}
     ${safeCss ? `<style data-framer-breakpoints="">${safeCss}</style>` : ''}${runtimeLoaderScript}
   </head>
   <body>

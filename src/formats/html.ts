@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import * as cheerio from 'cheerio';
 import type { ExporterStrategy } from '../types.js';
 import { synthesizeFramerBreakpoints } from '../optimizer.js';
+import { stripTrackers } from '../assembler.js';
 import { STATIC_EXTENSIONS } from '../constants.js';
 
 export function routeToHtmlFilename(route: string): string {
@@ -14,42 +15,54 @@ export function routeToHtmlFilename(route: string): string {
   return `${clean}.html`;
 }
 
+/**
+ * Deterministic route → filename map with collision disambiguation.
+ * Shared by compile() (writing files) and assemble() (README listing) so both
+ * agree on names even when routes collide.
+ */
+export function buildRouteFilenameMap(routes: string[]): Map<string, string> {
+  const routeMap = new Map<string, string>();
+  const usedFilenames = new Set<string>();
+
+  for (const route of routes) {
+    let filename = routeToHtmlFilename(route);
+    const isHome = route === '/' || route === '/index';
+
+    if (usedFilenames.has(filename.toLowerCase()) && !isHome) {
+      const hash = crypto.createHash('md5').update(route).digest('hex').slice(0, 6);
+      const ext = path.extname(filename);
+      const base = filename.slice(0, -ext.length);
+      const disambiguated = `${base}-${hash}${ext}`;
+      console.log(`  [Compiler] Route collision: '${route}' disambiguated to '${disambiguated}'`);
+      filename = disambiguated;
+    }
+
+    usedFilenames.add(filename.toLowerCase());
+    routeMap.set(route, filename);
+    if (isHome) routeMap.set('/index', 'index.html');
+    if (route.endsWith('/')) {
+      routeMap.set(route.slice(0, -1), filename);
+    }
+  }
+  return routeMap;
+}
+
 export const htmlStrategy: ExporterStrategy = {
   name: 'Static HTML/CSS/JS',
   format: 'html',
   description: 'Pure static multi-page HTML, CSS, and JS bundle ready for direct browsing or static hosting',
 
-  async compile(outputDir: string, pages: Record<string, string>, runtimeScripts?: string[]): Promise<void> {
+  async compile(outputDir: string, pages: Record<string, string>, runtimeScripts?: string[], options?: { keepAnalytics?: boolean }): Promise<void> {
     console.log('  [Compiler] Compiling Static HTML pages...');
 
-    // Build route-to-filename lookup with collision tracking
-    const routeMap = new Map<string, string>();
-    const usedFilenames = new Set<string>();
-
-    for (const route of Object.keys(pages)) {
-      let filename = routeToHtmlFilename(route);
-      const isHome = route === '/' || route === '/index';
-
-      if (usedFilenames.has(filename.toLowerCase()) && !isHome) {
-        const hash = crypto.createHash('md5').update(route).digest('hex').slice(0, 6);
-        const ext = path.extname(filename);
-        const base = filename.slice(0, -ext.length);
-        const disambiguated = `${base}-${hash}${ext}`;
-        console.log(`  [Compiler] Route collision: '${route}' disambiguated to '${disambiguated}'`);
-        filename = disambiguated;
-      }
-
-      usedFilenames.add(filename.toLowerCase());
-      routeMap.set(route, filename);
-      if (isHome) routeMap.set('/index', 'index.html');
-      if (route.endsWith('/')) {
-        routeMap.set(route.slice(0, -1), filename);
-      }
-    }
+    const routeMap = buildRouteFilenameMap(Object.keys(pages));
 
     for (const [route, htmlContent] of Object.entries(pages)) {
       const filename = routeMap.get(route) || routeToHtmlFilename(route);
       const $ = cheerio.load(htmlContent);
+
+      // Strip third-party trackers from the verbatim crawl unless opted in
+      stripTrackers($, options?.keepAnalytics === true);
 
       // Rewrite internal links to point directly to exported .html files
       $('a[href]').each((_, el) => {
@@ -98,10 +111,11 @@ export const htmlStrategy: ExporterStrategy = {
         }
       });
 
-      // Inject synthesized Framer breakpoint rules if present
+      // Inject synthesized Framer breakpoint rules if present.
+      // Only </style can break out of this container — scope the escape to it.
       const framerBreakpoints = synthesizeFramerBreakpoints(htmlContent);
       if (framerBreakpoints) {
-        const safeCss = framerBreakpoints.replace(/<\/(title|style|script)/gi, '<\\/$1');
+        const safeCss = framerBreakpoints.replace(/<\/style/gi, '<\\/style');
         $('head').append(`<style data-framer-breakpoints="">${safeCss}</style>`);
       }
 
@@ -113,7 +127,7 @@ export const htmlStrategy: ExporterStrategy = {
         return src.startsWith('/assets/') ? `${relPrefix}assets/${src.slice(8)}` : src;
       });
       if (scripts.length > 0) {
-        const scriptArray = JSON.stringify(scripts);
+        const scriptArray = JSON.stringify(scripts).replace(/</g, '\\u003c');
         $('head').append(`
     <script data-uncage-runtime>
       (function() {
@@ -176,8 +190,13 @@ export const htmlStrategy: ExporterStrategy = {
 `;
     await fs.writeFile(path.join(outputDir, '.gitignore'), gitignore);
 
-    // 3. README.md
-    const routeList = routes.map(r => `- [${routeToHtmlFilename(r)}](./${routeToHtmlFilename(r)}) (Source route: \`${r}\`)`).join('\n');
+    // 3. README.md — reuse the SAME deterministic map compile() used so
+    // disambiguated collision filenames are listed correctly
+    const routeFilenameMap = buildRouteFilenameMap(routes);
+    const routeList = routes.map(r => {
+      const fname = routeFilenameMap.get(r) || routeToHtmlFilename(r);
+      return `- [${fname}](./${fname}) (Source route: \`${r}\`)`;
+    }).join('\n');
     const readme = `# Static Website Clone
 
 This is a standalone static HTML, CSS, and JS export cloned from **${targetUrl}** using [Uncage](https://github.com/Nightteye/uncage).
@@ -213,7 +232,14 @@ This folder is 100% static and ready to drag-and-drop to:
       const stat = await fs.stat(publicAssetsDir).catch(() => null);
       if (stat && stat.isDirectory()) {
         await fs.cp(publicAssetsDir, rootAssetsDir, { recursive: true, force: true });
-        await fs.rm(path.join(outputDir, 'public'), { recursive: true, force: true }).catch(() => {});
+        // Remove only what we manage under public/ rather than the whole directory,
+        // in case other tooling ever places files there
+        const publicDir = path.join(outputDir, 'public');
+        const entries = await fs.readdir(publicDir).catch(() => [] as string[]);
+        for (const entry of entries) {
+          await fs.rm(path.join(publicDir, entry), { recursive: true, force: true }).catch(() => {});
+        }
+        await fs.rmdir(publicDir).catch(() => {});
         console.log('  [Assembler] Consolidated assets to root directory for static hosting');
       }
     } catch (e: any) {

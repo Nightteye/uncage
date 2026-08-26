@@ -79,7 +79,8 @@ export async function optimizeImages(imgDir: string) {
           let optimizedBuffer: Buffer | null = null;
 
           if (ext === '.png') {
-            optimizedBuffer = await sharp(originalBuffer).png({ compressionLevel: 9, effort: 7 }).toBuffer();
+            // animated:true keeps APNG frames; plain PNGs are handled identically
+            optimizedBuffer = await sharp(originalBuffer, { animated: true }).png({ compressionLevel: 9, effort: 7 }).toBuffer();
           } else if (ext === '.jpg' || ext === '.jpeg') {
             optimizedBuffer = await sharp(originalBuffer).jpeg({ quality: 85, mozjpeg: true }).toBuffer();
           } else if (ext === '.webp') {
@@ -93,7 +94,10 @@ export async function optimizeImages(imgDir: string) {
             await fs.writeFile(filePath, optimizedBuffer);
             optimizedCount++;
           }
-        } catch {}
+        } catch (e: any) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.log(`  [Optimizer] Skipped image ${file}: ${msg}`);
+        }
       }));
     }
 
