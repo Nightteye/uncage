@@ -2,18 +2,26 @@
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const tsxBin = path.resolve(__dirname, '../node_modules/.bin/tsx');
+const tsxCli = path.resolve(__dirname, '../node_modules/tsx/dist/cli.mjs');
 const entryTs = path.resolve(__dirname, '../src/index.ts');
 
-const isWin = process.platform === 'win32';
-const cmd = isWin ? `${tsxBin}.cmd` : tsxBin;
+if (!fs.existsSync(tsxCli)) {
+  console.error('  ❌ tsx not found. Run `npm install` in the uncage project first.');
+  process.exit(1);
+}
 
-const child = spawn(cmd, [entryTs, ...process.argv.slice(2)], {
+// Spawn node directly (never through a shell) so URL arguments containing
+// &, %, ^, quotes, or spaces survive intact on Windows cmd.exe.
+const child = spawn(process.execPath, [tsxCli, entryTs, ...process.argv.slice(2)], {
   stdio: 'inherit',
-  shell: isWin,
 });
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => child.kill(signal));
+}
 
 child.on('error', (err) => {
   console.error('  ❌ Failed to launch uncage:', err.message);

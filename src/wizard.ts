@@ -5,7 +5,18 @@ export interface WizardResult {
   url: string;
   outputName: string;
   format: ExportFormat;
-  options: ExtractorOptions;
+  /** Only contains keys the user explicitly configured; merged over CLI flags. */
+  options: Partial<ExtractorOptions>;
+}
+
+// Single source of truth for URL normalization: trim, then default the scheme.
+// Both validation and construction must use this so they can't disagree.
+function normalizeUrlInput(val: string): string {
+  const trimmed = val.trim();
+  if (!trimmed) return '';
+  return trimmed.startsWith('http://') || trimmed.startsWith('https://')
+    ? trimmed
+    : `https://${trimmed}`;
 }
 
 export function printBanner(): void {
@@ -25,13 +36,9 @@ export async function runWizard(): Promise<WizardResult> {
     const rawUrl = await input({
       message: '🌐 Enter the website URL to clone:',
       validate: (val) => {
-        const trimmed = val.trim();
-        if (!trimmed) return 'Please enter a URL (e.g. https://example.com)';
+        if (!val.trim()) return 'Please enter a URL (e.g. https://example.com)';
         try {
-          const full = trimmed.startsWith('http://') || trimmed.startsWith('https://') 
-            ? trimmed 
-            : `https://${trimmed}`;
-          new URL(full);
+          new URL(normalizeUrlInput(val));
           return true;
         } catch {
           return 'Please enter a valid website URL';
@@ -39,9 +46,7 @@ export async function runWizard(): Promise<WizardResult> {
       },
     });
 
-    const url = rawUrl.startsWith('http://') || rawUrl.startsWith('https://') 
-      ? rawUrl.trim() 
-      : `https://${rawUrl.trim()}`;
+    const url = normalizeUrlInput(rawUrl);
 
     const defaultOutput = new URL(url).hostname;
 
@@ -84,12 +89,8 @@ export async function runWizard(): Promise<WizardResult> {
       default: false,
     });
 
-    let options: ExtractorOptions = {
-      maxPages: 50,
-      timeout: 30000,
-      headless: true,
-      skipDeps: false,
-    };
+    // Only populated when the user customizes; empty means "keep CLI/defaults"
+    let options: Partial<ExtractorOptions> = {};
 
     if (customizeAdvanced) {
       const maxPages = await number({
@@ -116,11 +117,11 @@ export async function runWizard(): Promise<WizardResult> {
       });
 
       options = {
-        maxPages: maxPages ?? 50,
-        timeout: timeout ?? 30000,
         headless: !showBrowser,
         skipDeps,
       };
+      if (maxPages !== undefined) options.maxPages = maxPages;
+      if (timeout !== undefined) options.timeout = timeout;
     }
 
     return {
