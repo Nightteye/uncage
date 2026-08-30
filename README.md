@@ -3,6 +3,7 @@
 > **Clone any Framer, Webflow, or modern website into clean, production-ready React or Static HTML code.**  
 > 100% free, open-source, and runs locally on your machine. No paywalls, no subscriptions, and no limits.
 
+[![GitHub Stars](https://img.shields.io/github/stars/Nightteye/uncage?style=flat&color=yellow)](https://github.com/Nightteye/uncage/stargazers)
 [![Status: Beta](https://img.shields.io/badge/Status-Public%20Beta-orange.svg)](https://github.com/Nightteye/uncage/issues)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-green.svg)](https://nodejs.org/)
