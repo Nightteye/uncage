@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/Nightteye/uncage/stargazers"><img src="https://img.shields.io/github/stars/Nightteye/uncage?style=flat&color=yellow" alt="GitHub Stars"></a>
   <a href="https://github.com/Nightteye/uncage/issues"><img src="https://img.shields.io/badge/Status-Public%20Beta-orange.svg" alt="Status: Beta"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-%3E%3D18.0.0-green.svg" alt="Node.js"></a>
