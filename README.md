@@ -6,6 +6,10 @@
 
 Uncage is a local website cloner that captures a rendered site and exports a standalone static HTML, CSS, and JavaScript bundle. It includes a browser UI for simple use and a CLI for repeatable exports.
 
+> [!IMPORTANT]
+> ### Static HTML pivot
+> Uncage now supports Static HTML, CSS, and JavaScript exports only. The React TSX/JSX cloner is paused indefinitely because it still has reliability issues. The code remains in the repository, and contributions to fix it are welcome. Read the full [pivot announcement](docs/ANNOUNCEMENT.md).
+
 > [!WARNING]
 > Only clone sites you own or have permission to capture. Uncage loads target-site JavaScript in a local Playwright browser, and an export can still need manual review for dynamic application behavior.
 
