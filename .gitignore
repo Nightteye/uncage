@@ -62,6 +62,13 @@ playwright/.cache/
 .gemini/
 .agent/
 .system_generated/
+.commandcode/
 
 # ZCode local config
 .zcode/
+
+# Local audit, pivot, and scratch notes (not project documentation)
+PIVOT_LOG.md
+IMPROVEMENT_PLAN.md
+Bug_2.md
+new_rewriteHtml.txt

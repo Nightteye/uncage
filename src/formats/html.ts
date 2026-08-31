@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import * as cheerio from 'cheerio';
-import type { ExporterStrategy } from '../types.js';
+import type { ExporterStrategy, StrategyOptions, ProgressHandler } from '../types.js';
 import { synthesizeFramerBreakpoints } from '../optimizer.js';
 import { stripTrackers } from '../assembler.js';
 import { STATIC_EXTENSIONS } from '../constants.js';
@@ -24,7 +24,8 @@ export function buildRouteFilenameMap(routes: string[]): Map<string, string> {
   const routeMap = new Map<string, string>();
   const usedFilenames = new Set<string>();
 
-  for (const route of routes) {
+  // Sort for deterministic disambiguation regardless of input order.
+  for (const route of [...routes].sort()) {
     let filename = routeToHtmlFilename(route);
     const isHome = route === '/' || route === '/index';
 
@@ -52,8 +53,10 @@ export const htmlStrategy: ExporterStrategy = {
   format: 'html',
   description: 'Pure static multi-page HTML, CSS, and JS bundle ready for direct browsing or static hosting',
 
-  async compile(outputDir: string, pages: Record<string, string>, runtimeScripts?: string[], options?: { keepAnalytics?: boolean }): Promise<void> {
+  async compile(outputDir: string, pages: Record<string, string>, runtimeScripts?: string[], options?: StrategyOptions): Promise<void> {
     console.log('  [Compiler] Compiling Static HTML pages...');
+    const onProgress: ProgressHandler | undefined = options?.onProgress;
+    onProgress?.({ kind: 'phase', message: 'Compiling static HTML pages' });
 
     const routeMap = buildRouteFilenameMap(Object.keys(pages));
 
@@ -145,25 +148,52 @@ export const htmlStrategy: ExporterStrategy = {
     </script>`);
       }
 
-      // Relativize root-relative asset URLs (/assets/ -> ./assets/ or ../assets/) for direct file:// browsing
-      let finalHtml = $.html();
-      finalHtml = finalHtml.replace(/\b(src|href|poster|data-src)\s*=\s*(["'])\/assets\//gi, `$1=$2${relPrefix}assets/`);
-      finalHtml = finalHtml.replace(/srcset\s*=\s*(["'])(.*?)\1/gi, (_, q, val) => {
-        return `srcset=${q}${val.replace(/\/assets\//g, `${relPrefix}assets/`)}${q}`;
+      // Relativize root-relative asset URLs (/assets/ -> ./assets/ or ../assets/)
+      // for direct file:// browsing. Walk attributes with Cheerio instead of regex
+      // so data-* attributes and srcset are handled deterministically.
+      const relativize = (val: string): string => val.replace(/\/assets\//g, `${relPrefix}assets/`);
+
+      $('[src], [href], [poster], [data-src], [data-href], [data-srcset], [data-poster]').each((_, el) => {
+        for (const attr of ['src', 'href', 'poster', 'data-src', 'data-href', 'data-srcset', 'data-poster']) {
+          const val = $(el).attr(attr);
+          if (val && val.includes('/assets/')) {
+            $(el).attr(attr, relativize(val));
+          }
+        }
       });
-      finalHtml = finalHtml.replace(/url\(\s*(["']?)\/assets\//gi, `url($1${relPrefix}assets/`);
+
+      // srcset is a space/comma-separated list of URLs — relativize each entry.
+      $('[srcset]').each((_, el) => {
+        const val = $(el).attr('srcset');
+        if (val && val.includes('/assets/')) {
+          $(el).attr('srcset', relativize(val));
+        }
+      });
+
+      // Inline style url(/assets/...) references.
+      $('[style]').each((_, el) => {
+        const style = $(el).attr('style');
+        if (style && style.includes('/assets/')) {
+          $(el).attr('style', style.replace(/url\(\s*(["']?)\/assets\//gi, `url($1${relPrefix}assets/`));
+        }
+      });
+
+      let finalHtml = $.html();
 
 
       const filePath = path.join(outputDir, filename);
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, finalHtml, 'utf-8');
       console.log(`        Generated ${filename}`);
+      onProgress?.({ kind: 'page', message: `Generated ${filename}` });
 
     }
   },
 
-  async assemble(outputDir: string, targetUrl: string, originalHead: string, routes: string[], runtimeScripts?: string[]): Promise<void> {
+  async assemble(outputDir: string, targetUrl: string, originalHead: string, routes: string[], runtimeScripts?: string[], options?: StrategyOptions): Promise<void> {
     console.log('  [Assembler] Finalizing Static HTML project structure...');
+    const onProgress: ProgressHandler | undefined = options?.onProgress;
+    onProgress?.({ kind: 'phase', message: 'Finalizing static HTML project' });
 
     const safeName = path.basename(outputDir).toLowerCase();
 

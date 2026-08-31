@@ -33,7 +33,9 @@ export function buildRouteComponentMap(routes: string[]): Map<string, string> {
   const routeComponentMap = new Map<string, string>();
   const usedLowerNames = new Set<string>();
 
-  for (const route of routes) {
+  // Sort for deterministic name assignment: identical input sets yield identical
+  // component names regardless of insertion order (collision suffixing depends on it).
+  for (const route of [...routes].sort()) {
     let compName = toPascalCase(route);
     if (!compName || /^\d/.test(compName)) {
       compName = `Page${compName || 'Home'}`;
@@ -272,12 +274,14 @@ export const htmlAttrMap: Record<string, string> = {
   'nomodule': 'noModule',
   'accesskey': 'accessKey',
   'autocapitalize': 'autoCapitalize',
-  'popovertarget': 'popoverTarget',
-  'popovertargetaction': 'popoverTargetAction',
-  'fetchpriority': 'fetchPriority',
   'imagesrcset': 'imageSrcSet',
   'imagesizes': 'imageSizes',
   'referrerpolicy': 'referrerPolicy',
+  // NOTE: `fetchpriority`, `popovertarget`, and `popovertargetaction` are
+  // intentionally NOT camelCased here. React 18 (the export target) does not
+  // recognize their camelCase forms (those only landed in React 19) and warns.
+  // Leaving them lowercase passes them through as native/custom attributes,
+  // which browsers honor without any React warning.
 };
 
 

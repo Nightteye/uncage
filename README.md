@@ -1,246 +1,129 @@
 <p align="center">
-  <img src="./media/logo.svg" alt="Uncage Logo" width="120" height="120" />
+  <img src="./media/logo.svg" alt="Uncage logo" width="120" height="120" />
 </p>
 
-<h1 align="center">Uncage</h1>
+# Uncage
 
-<p align="center">
-  <strong>Clone any Framer, Webflow, or modern website into clean, production-ready React or Static HTML code.</strong><br>
-  100% free, open-source, and runs locally on your machine. No paywalls, no subscriptions, and no limits.
-</p>
-
-<p align="center">
-  <a href="https://github.com/Nightteye/uncage/stargazers"><img src="https://img.shields.io/github/stars/Nightteye/uncage?style=flat&color=yellow" alt="GitHub Stars"></a>
-  <a href="https://github.com/Nightteye/uncage/issues"><img src="https://img.shields.io/badge/Status-Public%20Beta-orange.svg" alt="Status: Beta"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-%3E%3D18.0.0-green.svg" alt="Node.js"></a>
-  <a href="https://vitejs.dev/"><img src="https://img.shields.io/badge/Vite-6.x-646cff.svg" alt="Vite"></a>
-  <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-18.x-61dafb.svg" alt="React"></a>
-</p>
-
----
+Uncage is a local website cloner that captures a rendered site and exports a standalone static HTML, CSS, and JavaScript bundle. It includes a browser UI for simple use and a CLI for repeatable exports.
 
 > [!WARNING]
-> ### Project Status: Public Beta
-> **Uncage is currently in active beta development.** While it successfully handles and clones many complex Framer and Webflow sites, exports may still have fidelity gaps, missing dynamic script behaviors, or styling imperfections on certain advanced layouts.
-> 
-> Active development is underway to enhance engine accuracy (including automatic Navbar/Footer component decomposition, improved runtime physics isolation, and deeper CMS support).
-> 
-> If you encounter a broken clone or layout issue, please **[open an issue on GitHub](https://github.com/Nightteye/uncage/issues)** with the target URL so it can be resolved!
+> Only clone sites you own or have permission to capture. Uncage loads target-site JavaScript in a local Playwright browser, and an export can still need manual review for dynamic application behavior.
 
----
+## What it exports
 
-## Key Features
+- Multi-page static HTML that can be opened directly or deployed to static hosting.
+- Local copies of captured images, fonts, CSS, JavaScript, media, WASM, and JSON assets.
+- Rewritten internal links and asset references for offline/static hosting use.
+- A generated `package.json` with `npm run preview` for serving the export.
 
-- **Modern React 18 Exports:** Converts websites into modular React TSX or JSX components powered by **Vite** and **React Router v6**.
-- **Static HTML Mode:** Generates clean, multi-page HTML/CSS/JS bundles that work offline without any build steps.
-- **Preserved Animations:** Keeps Framer Motion interactions, scroll reveals, and hover effects working out of the box.
-- **100% Offline Asset Bundling:** Intercepts and rewrites all images (AVIF, WebP, SVG, PNG), custom fonts (WOFF2, TTF), and code-split JavaScript chunks.
-- **Stealth Browser Engine:** Powered by Playwright with built-in bot-detection bypass to handle complex sites.
-- **Built-in Optimizers:** Automatic CSS tree-shaking with PurgeCSS and image compression with Sharp.
+React/TSX/JSX export is currently paused. The dormant code remains in the repository, but every supported command produces static HTML/CSS/JS and the legacy `--format` and `--interactive` options are no longer available.
 
----
+## Install
 
-## Tech Stack
-
-1. **Language & Runtime:** TypeScript running on Node.js.
-2. **Extraction Engine:** Playwright (Headless Chromium, Network Interception).
-3. **CLI UX:** Inquirer.js & Chalk (Interactive terminal UI).
-4. **Parsing Engine:** Custom HTML-to-JSX AST Compiler.
-5. **Output Architecture:** Vite & React 18 scaffolds.
-
----
-
-## Prerequisites
-
-Ensure your environment meets the following requirements:
-
-- **[Node.js](https://nodejs.org/)** (version `18.0.0` or higher)
-- **npm** (included with Node.js)
-
----
-
-## Quick Start
-
-### 1. Download & Install
+Uncage requires Node.js 18 or newer and npm.
 
 ```bash
-# Clone the repository
 git clone https://github.com/Nightteye/uncage.git
 cd uncage
-
-# Install project dependencies
 npm install
-
-# Install the browser engine
 npx playwright install chromium
 ```
 
-### 2. Run the Interactive Wizard
+To use the package binary from another directory, install or link the package, then run `uncage`. If the package is available through npm in your environment, `npx uncage` runs the same binary.
 
-The easiest way to use Uncage is through the interactive CLI wizard:
+## Quick start: browser UI
+
+The UI is the easiest way to start:
+
+> [!NOTE]
+> The browser UI is still a work in progress. I plan to improve its design soon, but I have limited time to spend on the project right now. It is simple for the moment, and the focus has been on making the export process reliable.
 
 ```bash
 npm start
+# equivalent: npm run ui
+# installed binary: uncage
 ```
 
-Follow the on-screen prompts to enter your target website URL and choose your desired format.
-
----
-
-## Direct CLI Usage
-
-You can also clone sites directly with command-line flags:
+It opens `http://localhost:8787`, where you can enter a URL, choose an output folder, and monitor progress. Use `--port` to choose another UI port:
 
 ```bash
-# Export as React 18 + TypeScript (Default)
-npm run uncage -- https://example.framer.website -o my-react-site
-
-# Export as React 18 + JavaScript (JSX)
-npm run uncage -- https://example.framer.website -f react-js -o my-jsx-site
-
-# Export as Pure Static HTML / CSS / JS
-npm run uncage -- https://example.framer.website -f html -o my-html-site
+npm run uncage -- --ui --port 9000
 ```
 
-> **Tip:** Link globally to run `uncage` directly from any terminal window:
-> ```bash
-> npm link
-> # Now run directly:
-> uncage https://example.framer.website
-> ```
+## Direct CLI usage
 
----
+Pass a URL to clone without opening the UI:
 
-## Export Formats
-
-| Format | Option Flag | Description |
-|---|---|---|
-| **React 18 + TypeScript** *(Default)* | `-f react-ts` | Full Vite + TSX project, React Router v6 navigation, typed pages in `src/pages/*.tsx`. |
-| **React 18 + JavaScript** | `-f react-js` | Clean JSX components without TypeScript configuration. |
-| **Static HTML / CSS / JS** | `-f html` | Ready-to-browse static HTML files. Double-click `index.html` or deploy to Netlify/Vercel. |
-
----
-
-## CLI Options & Flags
-
+```bash
+npm run uncage -- https://example.com -o example-clone
+# installed binary
+uncage https://example.com -o example-clone
 ```
+
+The result is written to `output/<output-name>/`. `uncage --ui` opens the UI even when a URL is also supplied.
+
+### Options
+
+```text
 Usage: uncage [url] [options]
 
-Arguments:
-  url                    Target website URL to clone (optional: launches wizard if omitted)
-
-Options:
-  -o, --output <name>    Folder name for the exported site (default: website domain)
-  -f, --format <format>  Export format: react-ts, react-js, html (default: "react-ts")
-  -i, --interactive      Interactively pick the export format
-  --max-pages <number>   Maximum number of subpages to crawl (default: 50)
-  --timeout <ms>         Page load timeout in milliseconds (default: 30000)
-  --no-headless          Open visible browser window during crawl (helpful for debugging)
-  --skip-deps            Skip deep dynamic JS module resolution (faster export)
-  --no-purge             Keep all original CSS without PurgeCSS tree-shaking
-  -h, --help             Show help menu
+  -o, --output <dir>          Output directory name
+      --ui                    Open the web UI even when a URL is provided
+      --port <number>         Web UI port (default: 8787)
+      --max-pages <number>    Maximum pages to crawl (default: 50)
+      --max-depth <number>    Maximum link depth; 0 is the seed only (default: unlimited)
+      --priority-only         Crawl only the seed, navigation pages, and sitemap pages with priority >= 0.5
+      --ignore-robots         Ignore robots.txt and Crawl-delay; use only with permission
+      --timeout <ms>          Page navigation timeout (default: 30000)
+      --no-headless           Show the browser while crawling
+      --safe-mode             Disable page JavaScript; faster, but cannot render SPAs
+      --skip-deps             Skip recursive JavaScript module dependency scanning
+      --max-memory <mb>       Maximum buffer memory; 0 is unlimited
+      --allow-url <pattern>   Allow matching asset URLs; may be repeated
+      --block-url <pattern>   Block matching asset URLs; may be repeated
+      --no-purge              Skip PurgeCSS optimization
+      --keep-analytics        Retain third-party analytics and tracking scripts
 ```
 
----
+Asset URL filters support `*`, `?`, and character ranges such as `[0-9]`. They never block page navigations.
 
-## Running Exported Projects
+## Polite crawl discovery
 
-All cloned websites are saved inside the `output/` folder.
+By default, Uncage reads `robots.txt` before crawling. It applies `Uncage` rules first, falls back to `User-agent: *`, obeys Allow/Disallow precedence, and honors `Crawl-delay`. A disallowed seed URL stops the crawl before browser launch.
 
-### Running React (TSX or JSX) Projects
+It also discovers same-origin pages from `robots.txt` sitemap declarations and the common `/sitemap.xml` and `/sitemap_index.xml` locations. Sitemap URLs affect the crawl order only: `--max-pages` is always a hard cap. If `robots.txt` cannot be reached, Uncage logs a warning and continues without restrictions. Use `--ignore-robots` only when you have clear authorization.
 
-```bash
-# 1. Navigate to the exported site folder
-cd output/<your-output-folder>
-
-# 2. Install dependencies
-npm install
-
-# 3. Start the local development server
-npm run dev
-
-# 4. (Optional) Build for production
-npm run build
-```
-
-### Running Static HTML Projects
+## Preview and deploy an export
 
 ```bash
-# Navigate to the exported folder
-cd output/<your-output-folder>
-
-# Start a local preview server
+cd output/example-clone
 npm run preview
-
-# Or open index.html directly in any browser
 ```
 
----
+You can also open `index.html` directly in a browser. The export is static and can be deployed to services such as Netlify, Vercel, GitHub Pages, Cloudflare Pages, S3, Nginx, or Apache.
 
-## Pipeline Architecture
+## Limits and troubleshooting
 
-1. **Stealth Crawl & Capture:** Launches an automated headless browser to load the target page, executes a smooth scroll pass to trigger lazy-loaded images, and extracts the full rendered DOM (including Shadow DOM).
-2. **Asset Interception & Decompression:** Intercepts every network request (fonts, images, videos, CSS stylesheets, and JS bundles), decodes the compressed content, and saves them locally with sanitized names.
-3. **AST JSX Compiler:** Parses HTML using AST traversal, converts styles and attributes into clean React props (`className`, `defaultValue`, camelCased SVGs), and organizes the layout.
-4. **Scaffolding & Assembly:** Generates Vite configurations, dynamic React Router mappings, and an isolated runtime loader that preserves animations without duplicate script collisions.
+- Sites with authenticated content, CAPTCHAs, aggressive bot protection, or server-only application behavior may not export completely.
+- Use `--no-purge` if JavaScript applies CSS classes dynamically and styles are missing in the result.
+- Use `--skip-deps` for a faster export when transitive JavaScript module capture is unnecessary.
+- Use `--safe-mode` for a more conservative static capture; it intentionally cannot render client-side applications.
+- The crawler is not a substitute for a site's source code, licenses, or permission to reuse its design and content.
 
----
+## Development
 
-## Frequently Asked Questions
+```bash
+npm run typecheck
+npm test
+npm run test:coverage
+```
 
-<details>
-<summary><b>1. Why are some button hover states or dark-mode styles missing?</b></summary>
-<p>By default, Uncage runs PurgeCSS to keep output CSS files small. If a site applies styles dynamically with JavaScript, run the clone with <code>--no-purge</code> to keep 100% of the original CSS:</p>
-<pre><code>uncage https://example.com --no-purge</code></pre>
-</details>
-
-<details>
-<summary><b>2. How do I clone a website faster?</b></summary>
-<p>You can skip deep recursive JavaScript bundle scanning with <code>--skip-deps</code> and limit the page count:</p>
-<pre><code>uncage https://example.com --skip-deps --max-pages 5</code></pre>
-</details>
-
-<details>
-<summary><b>3. Is my data private?</b></summary>
-<p>Yes. Uncage runs 100% locally on your machine. No telemetry, no external servers, and no tracking.</p>
-</details>
-
----
-
-## Security & Crawler Architecture
-
-Uncage launches a local Playwright Chromium instance with relaxed CORS headers (`--disable-web-security`) strictly to enable cross-origin asset harvesting (fonts, CDNs, chunks) and Shadow DOM inspection.
-
-> [!NOTE]
-> Always crawl websites you trust or own. Uncage executes client-side JavaScript inside a headless browser to capture hydrated DOM states.
-
----
-
-## Research & Architecture Origins
-
-Uncage was designed and built from extensive foundational reverse-engineering research on modern web architectures, AST decompilation, and bot-resistant network harvesting.
-
-Read the complete architectural research paper:  
-**[`Code Exporter Architecture Research.md`](./Code%20Exporter%20Architecture%20Research.md)**
-
----
+The current test suite covers extraction rewrites, static assembly, filename and route handling, URL filtering, crawl-policy parsing, and queue ordering.
 
 ## Contributing
 
-Contributions, issues, and feature requests are welcome.  
-Feel free to check the [issues page](https://github.com/Nightteye/uncage/issues) to contribute.
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
+Issues and pull requests are welcome. Include the target URL (where sharing it is permitted), the command used, expected behavior, and a small description of the observed export issue.
 
 ## License
 
-Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
-
-Created by [Nightteye](https://github.com/Nightteye) and the open-source community.
+Distributed under the [MIT License](LICENSE).

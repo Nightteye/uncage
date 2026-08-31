@@ -10,8 +10,14 @@ export const STATIC_EXTENSIONS = new Set([
 
 export function sanitizeFileName(name: string): string {
   let sanitized = name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
+  // Windows strips trailing dots and spaces, which can cause collisions; remove them.
+  sanitized = sanitized.replace(/[. ]+$/g, '');
   if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i.test(sanitized)) {
     sanitized = `_${sanitized}`;
+  }
+  // Guard against "." and ".." and empty results.
+  if (!sanitized || sanitized === '.' || sanitized === '..') {
+    sanitized = '_';
   }
   return sanitized;
 }

@@ -1,4 +1,3 @@
-import { select } from '@inquirer/prompts';
 import type { ExportFormat, ExporterStrategy } from '../types.js';
 import { FORMAT_ALIASES } from '../types.js';
 import { reactTsStrategy } from './react-ts.js';
@@ -11,41 +10,26 @@ export const strategies: Record<ExportFormat, ExporterStrategy> = {
   'html': htmlStrategy,
 };
 
+// React/TSX/JSX export is paused. Static HTML is the only user-facing format.
+// The react strategies stay in the codebase for future work — they are simply
+// not selectable. resolveFormat always yields the static HTML strategy.
 export function resolveFormat(input?: string): ExporterStrategy {
-  if (!input) return reactTsStrategy;
-  const normalized = input.trim().toLowerCase();
-  const resolvedFormat = FORMAT_ALIASES[normalized];
-  if (resolvedFormat && strategies[resolvedFormat]) {
-    return strategies[resolvedFormat];
+  if (input) {
+    const normalized = input.trim().toLowerCase();
+    const resolvedFormat = FORMAT_ALIASES[normalized];
+    if (resolvedFormat === 'react-ts' || resolvedFormat === 'react-js') {
+      console.warn('  ⚠️ React export is paused; producing Static HTML instead.');
+    } else if (!resolvedFormat) {
+      console.warn(`  ⚠️ Unknown format "${input}", defaulting to Static HTML.`);
+    }
   }
-  console.warn(`  ⚠️ Unknown format "${input}", defaulting to React 18 + TypeScript (react-ts)`);
-  return reactTsStrategy;
+  return htmlStrategy;
 }
 
+// Kept for API compatibility; the CLI no longer calls this (React is paused,
+// so there is no format to pick).
 export async function promptFormat(): Promise<ExporterStrategy> {
-  const answer = await select<ExportFormat>({
-    message: 'Select target export format:',
-    choices: [
-      {
-        name: 'React 18 + TypeScript (TSX) [Default]',
-        value: 'react-ts',
-        description: 'Vite + React 18 + TypeScript + React Router project',
-      },
-      {
-        name: 'React 18 + JavaScript (JSX)',
-        value: 'react-js',
-        description: 'Vite + React 18 + JavaScript (clean JSX) + React Router project',
-      },
-      {
-        name: 'Static HTML / CSS / JS',
-        value: 'html',
-        description: 'Pure static multi-page HTML/CSS/JS ready for static hosting or local browsing',
-      },
-    ],
-    default: 'react-ts',
-  });
-
-  return strategies[answer];
+  return htmlStrategy;
 }
 
 export { reactTsStrategy, reactJsStrategy, htmlStrategy };

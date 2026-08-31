@@ -24,13 +24,17 @@ export function cleanHead(originalHead: string, options: { keepAnalytics?: boole
     $('script[src*="googletagmanager"], script[src*="google-analytics"], script[src*="hotjar"], script[src*="clarity.ms"], script[src*="segment.com"], script[src*="connect.facebook.net"]').remove();
   }
 
-  // Remove inline scripts without src (bootstrap code that crashes on re-execution)
+  // Preserve functional inline scripts (theme/init/env/JSON-LD bootstrap) but
+  // drop analytics/tracking inline scripts by default. Blanket-removing every
+  // inline script strips rendering fidelity and SEO metadata.
   $('script:not([src])').each((_, el) => {
     const content = $(el).html() || '';
-    if (options.keepAnalytics && (content.includes('gtag') || content.includes('analytics') || content.includes('dataLayer'))) {
-      return;
-    }
-    $(el).remove();
+    const isAnalytics =
+      content.includes('gtag(') || content.includes('googletagmanager') || content.includes('dataLayer') ||
+      content.includes('google-analytics') || content.includes('hotjar') || content.includes('clarity') ||
+      content.includes('fbq(') || content.includes('_paq');
+    if (options.keepAnalytics) return;
+    if (isAnalytics) $(el).remove();
   });
   
   return { cleanedHead: $('head').html() || '', originalTitle };
@@ -271,7 +275,7 @@ export default defineConfig({
   const routeImports = uniqueComponents.map(comp => `import ${comp} from './pages/${comp}';`).join('\n');
   
   const routeElements = Array.from(routeComponentMap.entries())
-    .map(([r, comp]) => `        <Route path="${r}" element={<${comp} />} />`)
+    .map(([r, comp]) => `        <Route path=${JSON.stringify(r)} element={<${comp} />} />`)
     .join('\n');
 
   const defaultComp = routeComponentMap.get('/404') || routeComponentMap.get('/not-found') || routeComponentMap.get('/') || uniqueComponents[0] || 'Home';

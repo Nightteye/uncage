@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Uncage — Premium Local Website Cloner</title>
+  <style>
+    :root { color-scheme: dark; --accent: #8b5cf6; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: ui-system, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #09090b; color: #e4e4e7; }
+    header { padding: 2rem; text-align: center; border-bottom: 1px solid #181826; }
+    header h1 { margin: 0 0 .3rem; font-size: 1.6rem; }
+    header p { margin: 0; color: #71717a; font-size: .9rem; }
+    main { max-width: 720px; margin: 2rem auto; padding: 0 1.5rem 4rem; }
+    .field { margin-bottom: 1.1rem; }
+    label { display: block; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: #a1a1aa; margin-bottom .3rem; }
+    input[type="text"], input[type="number"] { width: 100%; padding: .7rem .8rem; border: 1px solid #27272a; border-radius: 8px; background: #111118; color: #e4e4e7; font-size: .95rem; }
+    input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(139,92,246,.15); }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .row2 > * { }
+    .row2 > .field { margin-bottom: 0; }
+    .toggle-row { display: flex; align-items: center; gap: .6rem; margin-bottom: .6rem; }
+    .toggle-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
+    .toggle-row label { margin-bottom: 0; font-size: .85rem; cursor: pointer; color: #d4d4db; }
+    button { width: 100%; padding: .85rem; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    #cloneBtn { background: var(--accent); color: #09090b; }
+    #cloneBtn:disabled { opacity: .6; cursor: not-allowed; }
+    details { margin-top: 1.2rem; }
+    summary { cursor: pointer; color: #c7b3ff; font-size: .9rem; user-select: none; }
+    .advanced { margin-top: 1rem; }
+    #progress { margin-top: 1.8rem; display: none; }
+    #progress h2 { font-size: 1rem; margin: 0 0 .8rem; }
+    #events { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .45rem; font-size: .85rem; max-height: 280px; overflow-y: auto; }
+    #events li { background: #111118; border: 1px solid #1e1e27; border-radius: 6px; padding: .5rem .7rem; color: #a1a1aa; }
+    #result { margin-top: 1.4rem; padding: 1rem; border-radius: 10px; display: none; }
+    #result.success { background: rgba(74,203,136,.1); border: 1px solid #4acb71; color: #4adb71; }
+    #result.error { background: rgba(244,63,94,.1); border: 1px solid #f5433e; color: #ff6b6b; }
+    a.cmd { color: #c7b3ff; }
+    .hint { color: #71717a; font-size: .82rem; margin-top: .3rem; }
+
+    /* Premium visual layer */
+    :root { --ink: #07101e; --surface: rgba(14, 24, 43, .74); --surface-deep: rgba(8, 15, 29, .93); --line: rgba(174, 198, 255, .15); --lavender: #ae9cff; --cyan: #72e8f5; --lime: #b6f36a; }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 11% 5%, rgba(114, 232, 245, .15), transparent 27rem),
+        radial-gradient(circle at 89% 15%, rgba(174, 156, 255, .2), transparent 29rem),
+        linear-gradient(145deg, #07101e, #0c1426 50%, #070b15);
+      color: #eff4ff;
+    }
+    body::before {
+      position: fixed; inset: 0; z-index: -1; pointer-events: none; content: "";
+      opacity: .32; background-image: linear-gradient(rgba(147, 169, 223, .08) 1px, transparent 1px), linear-gradient(90deg, rgba(147, 169, 223, .08) 1px, transparent 1px);
+      background-size: 44px 44px; mask-image: linear-gradient(to bottom, black, transparent 75%);
+    }
+    .topbar { display: flex; align-items: center; justify-content: space-between; width: min(1120px, calc(100% - 2rem)); min-height: 88px; margin: 0 auto; padding: 0; border-bottom: 1px solid var(--line); text-align: left; }
+    .topbar h1 { display: flex; align-items: center; gap: .72rem; margin: 0; font-size: 1.1rem; letter-spacing: -.04em; }
+    .topbar h1::before { display: grid; width: 35px; height: 35px; place-items: center; border: 1px solid rgba(114, 232, 245, .55); border-radius: 11px; background: linear-gradient(145deg, rgba(114,232,245,.2), rgba(174,156,255,.2)); color: var(--cyan); content: "⌬"; font-size: 1.12rem; box-shadow: inset 0 1px rgba(255,255,255,.15), 0 10px 25px rgba(114,232,245,.1); }
+    .topbar p { display: inline-flex; align-items: center; gap: .45rem; margin: 0; padding: .44rem .7rem; border: 1px solid var(--line); border-radius: 999px; color: #aab8d5; background: rgba(6, 12, 24, .4); font-size: .72rem; font-weight: 650; }
+    .topbar p:first-of-type::before { width: 6px; height: 6px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 12px var(--lime); content: ""; }
+    .topbar .hint { display: none; }
+    main { width: min(1120px, calc(100% - 2rem)); max-width: none; margin: 0 auto; padding: clamp(4rem, 9vw, 7.2rem) 0 5rem; }
+    .hero-layout { display: grid; grid-template-columns: 1.03fr .97fr; gap: clamp(2.7rem, 7vw, 6.5rem); align-items: center; }
+    .hero-copy { max-width: 545px; }
+    .eyebrow { display: flex; align-items: center; gap: .55rem; margin: 0 0 1rem; color: var(--cyan); font-size: .7rem; font-weight: 760; letter-spacing: .13em; text-transform: uppercase; }
+    .eyebrow::before { width: 25px; height: 1px; background: currentColor; content: ""; }
+    .hero-copy h2 { margin: 0; font-size: clamp(2.9rem, 6vw, 5.2rem); line-height: .96; letter-spacing: -.076em; font-weight: 740; }
+    .hero-copy h2 span { background: linear-gradient(100deg, #fff 9%, #d7d1ff 51%, #8debf6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero-copy > p:not(.eyebrow) { max-width: 500px; margin: 1.5rem 0 0; color: #a9b5cc; font-size: 1rem; line-height: 1.76; }
+    .feature-list { display: flex; flex-wrap: wrap; gap: .75rem 1.2rem; margin: 1.65rem 0 0; padding: 0; color: #c7d2e8; list-style: none; font-size: .77rem; }
+    .feature-list li { display: flex; align-items: center; gap: .4rem; }
+    .feature-list li::before { width: .42rem; height: .42rem; border-radius: 50%; background: linear-gradient(135deg, var(--cyan), var(--lavender)); box-shadow: 0 0 11px rgba(114,232,245,.75); content: ""; }
+    .clone-panel { position: relative; padding: 1px; overflow: hidden; border-radius: 22px; background: linear-gradient(140deg, rgba(114,232,245,.52), rgba(174,156,255,.32) 45%, rgba(255,255,255,.08)); box-shadow: 0 28px 80px rgba(0,0,0,.42); }
+    .clone-panel::before { position: absolute; inset: -75%; background: conic-gradient(from 220deg, transparent, rgba(114,232,245,.15), transparent 25%); animation: glint 10s linear infinite; content: ""; }
+    @keyframes glint { to { transform: rotate(1turn); } }
+    .clone-panel-inner { position: relative; padding: clamp(1.3rem, 3vw, 2rem); border-radius: 21px; background: linear-gradient(160deg, rgba(22, 34, 59, .96), rgba(9, 16, 30, .98)); backdrop-filter: blur(20px); }
+    .panel-heading { display: flex; align-items: center; justify-content: space-between; margin: 0 0 1.55rem; color: #dce6fa; font-size: .74rem; font-weight: 780; letter-spacing: .1em; text-transform: uppercase; }
+    .panel-heading span { padding: .34rem .55rem; border: 1px solid rgba(182,243,106,.27); border-radius: 999px; color: #defaa9; background: rgba(182,243,106,.07); font-size: .64rem; }
+    .clone-panel .field { margin-bottom: 1.1rem; }
+    .clone-panel label { display: flex; justify-content: space-between; margin-bottom: .5rem; color: #bac7df; font-size: .69rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+    .clone-panel input[type="text"], .clone-panel input[type="number"] { height: 48px; border-color: var(--line); border-radius: 10px; color: #eff4ff; background: rgba(5, 10, 21, .6); transition: border-color .2s, box-shadow .2s, background .2s; }
+    .clone-panel input:hover { border-color: rgba(174,198,255,.3); }
+    .clone-panel input:focus { border-color: rgba(114,232,245,.68); background: rgba(5,10,21,.84); box-shadow: 0 0 0 4px rgba(114,232,245,.09); }
+    .clone-panel .hint { color: #687895; font-size: .7rem; }
+    .clone-panel details { margin: .25rem 0 1.3rem; border-color: var(--line); border-radius: 11px; background: rgba(5, 10, 21, .28); }
+    .clone-panel details[open] { border-color: rgba(174,198,255,.27); background: rgba(5,10,21,.46); }
+    .clone-panel summary { padding: .84rem .9rem; color: #c9d4e9; font-size: .77rem; font-weight: 670; }
+    .clone-panel .advanced { padding: .15rem .9rem 1rem; }
+    .clone-panel .row2 { gap: .8rem; }
+    .clone-panel .toggle-row { min-height: 34px; padding: .28rem 0; border-bottom: 1px solid rgba(174,198,255,.07); }
+    .clone-panel .toggle-row:last-child { border-bottom: 0; }
+    .clone-panel .toggle-row label { display: block; margin: 0; color: #aebbd2; font-size: .73rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
+    .clone-panel .toggle-row input[type="checkbox"] { accent-color: var(--lavender); }
+    #cloneBtn { min-height: 52px; border-radius: 11px; color: #08101e; background: linear-gradient(105deg, #7de9f5, #b7a4ff 54%, #b5f36a); box-shadow: 0 15px 30px rgba(114,232,245,.15), inset 0 1px rgba(255,255,255,.62); font-size: .86rem; font-weight: 800; transition: transform .2s, box-shadow .2s; }
+    #cloneBtn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 21px 34px rgba(114,232,245,.2), inset 0 1px rgba(255,255,255,.62); }
+    .clone-panel::after { position: relative; display: block; padding: .78rem 1.5rem 0; color: #6d7d9c; text-align: center; content: "Your files stay local. Review target-site permissions before cloning."; font-size: .67rem; }
+    #progress { margin-top: 2.25rem; padding: 1.1rem; border-color: var(--line); border-radius: 15px; background: rgba(13, 22, 41, .58); box-shadow: 0 18px 38px rgba(0,0,0,.15); }
+    #progress h2 { color: #dbe6fa; font-size: .77rem; letter-spacing: .08em; text-transform: uppercase; }
+    #events li { border-color: rgba(174,198,255,.08); border-radius: 8px; background: rgba(5,10,21,.38); color: #aebbd1; }
+    #result { margin-top: 1.4rem; border-radius: 13px; }
+    .trust-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: clamp(3rem, 8vw, 6rem); overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--line); }
+    .trust-row div { padding: 1rem; background: rgba(9, 16, 30, .55); }
+    .trust-row b { display: block; color: #dce6f8; font-size: .75rem; }
+    .trust-row span { display: block; margin-top: .28rem; color: #72809a; font-size: .68rem; line-height: 1.4; }
+    @media (max-width: 780px) { .hero-layout { grid-template-columns: 1fr; gap: 2.5rem; } }
+    @media (max-width: 500px) { .topbar, main { width: min(100% - 1.25rem, 1120px); } .topbar p { font-size: 0; } .topbar p::before { margin: 0; } .hero-copy h2 { font-size: clamp(2.55rem, 14vw, 3.5rem); } .trust-row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <h1>Uncage</h1>
+    <p>Runs locally</p>
+    <p class="hint">React/TSX/JSX export is paused. Static HTML is the only format right now.</p>
+  </header>
+
+  <main>
+    <section class="hero-layout">
+      <div class="hero-copy">
+        <p class="eyebrow">Static export, reimagined</p>
+        <h2>Turn the web into <span>your workspace.</span></h2>
+        <p>Capture a live website into a portable static project, with assets, routes, and the details that make it feel intact.</p>
+        <ul class="feature-list">
+          <li>Static HTML / CSS / JS</li>
+          <li>Local asset capture</li>
+          <li>Polite crawl controls</li>
+        </ul>
+      </div>
+
+      <section class="clone-panel" aria-label="New static export"><div class="clone-panel-inner">
+        <div class="panel-heading">New export <span>Static HTML</span></div>
+    <div class="field">
+      <label for="url">Website URL</label>
+      <input id="url" type="text" placeholder="https://example.com" autocomplete="url" inputmode="url" />
+    </div>
+
+    <div class="field">
+      <label for="outputName">Output folder name</label>
+      <input id="outputName" type="text" placeholder="Auto-detect from hostname" autocomplete="off" />
+      <div class="hint">Saved inside your local output/ directory.</div>
+    </div>
+
+    <details>
+      <summary>Fine-tune this crawl</summary>
+      <div class="advanced">
+        <div class="row2">
+          <div class="field"><label for="maxPages">Max pages</label><input id="maxPages" type="number" placeholder="50" /></div>
+          <div class="field"><label for="timeout">Timeout (ms)</label><input id="timeout" type="number" placeholder="30000" /></div>
+        </div>
+        <div class="field"><label for="maxDepth">Max link depth</label><input id="maxDepth" type="number" min="0" placeholder="Unlimited (0 = seed only)" /></div>
+        <div class="toggle-row"><input id="headless" type="checkbox" checked /><label for="headless">Headless browser (uncheck to watch the crawl — debug)</label></div>
+        <div class="toggle-row"><input id="respectRobots" type="checkbox" checked /><label for="respectRobots">Respect robots.txt and its crawl delay</label></div>
+        <div class="toggle-row"><input id="priorityOnly" type="checkbox" /><label for="priorityOnly">Priority pages only (navigation and sitemap priority ≥ 0.5)</label></div>
+        <div class="toggle-row"><input id="safeMode" type="checkbox" /><label for="safeMode">Safe mode: disable JS (faster, no SPA rendering)</label></div>
+        <div class="toggle-row"><input id="skipDeps" type="checkbox" /><label for="skipDeps">Skip JS dependency scanning</label></div>
+        <div class="toggle-row"><input id="keepAnalytics" type="checkbox" /><label for="keepAnalytics">Keep analytics/tracking scripts</label></div>
+        <div class="toggle-row"><input id="noPurge" type="checkbox" /><label for="noPurge">Skip CSS purge (keep dynamic classes)</label></div>
+      </div>
+    </details>
+
+    <button id="cloneBtn" type="button">↗&nbsp; Start static export</button>
+      </div></section>
+    </section>
+
+    <div id="progress">
+      <h2>Cloning…</h2>
+      <ul id="events"></ul>
+    </div>
+
+    <div id="result"></div>
+
+    <section class="trust-row" aria-label="Export benefits">
+      <div><b>Browser-grade capture</b><span>Rendered pages, not a surface-level scrape.</span></div>
+      <div><b>Assets made portable</b><span>Images, styles, fonts, and code saved locally.</span></div>
+      <div><b>Hosting-ready output</b><span>Preview it locally or deploy static files.</span></div>
+    </section>
+    <p style="margin: 1.1rem 0 0; color: #71809a; text-align: center; font-size: .72rem;">React export is paused. <a href="/react-cloner-status" style="color: #9bdfea;">Read the status and help improve it.</a></p>
+  </main>
+
+  <script>
+    const urlInput = document.getElementById('url');
+    const outInput = document.getElementById('outputName');
+    const cloneBtn = document.getElementById('cloneBtn');
+    const progressEl = document.getElementById('progress');
+    const eventsEl = document.getElementById('events');
+    const resultEl = document.getElementById('result');
+
+    // Auto-fill output folder from URL hostname
+    urlInput.addEventListener('input', () => {
+      if (!outInput.value) {
+        try {
+          const u = new URL(urlInput.value.startsWith('http') ? urlInput.value : 'https://' + urlInput.value);
+          outInput.value = u.hostname;
+        } catch { outInput.value = ''; }
+      }
+    });
+
+    function addEvent(msg, kind) {
+      const li = document.createElement('li');
+      li.textContent = (kind === 'error' ? '❌ ' : kind === 'done' ? '✅ ' : '• ') + msg;
+      if (kind === 'error') li.style.color = '#ff6b6b';
+      if (kind === 'done') li.style.color = '#4adb71';
+      eventsEl.appendChild(li);
+      li.scrollIntoView({ block: 'end' });
+    }
+
+    function num(id) { const v = document.getElementById(id).value; return v ? Number(v) : undefined; }
+    function bool(id) { return document.getElementById(id).checked; }
+
+    async function clone() {
+      const url = urlInput.value.trim();
+      if (!url) return;
+      const host = url.startsWith('http') ? url : 'https://' + url;
+
+      // Reset UI
+      eventsEl.innerHTML = '';
+      resultEl.style.display = 'none';
+      cloneBtn.disabled = true;
+      progressEl.style.display = 'block';
+
+      const body = {
+        url: host,
+        outputName: outInput.value.trim() || undefined,
+        headless: bool('headless'),
+        safeMode: bool('safeMode'),
+        respectRobots: bool('respectRobots'),
+        priorityOnly: bool('priorityOnly'),
+        skipDeps: bool('skipDeps'),
+        keepAnalytics: bool('keepAnalytics'),
+        noPurge: bool('noPurge'),
+        maxPages: num('maxPages'),
+        maxDepth: num('maxDepth'),
+        timeout: num('timeout'),
+      };
+
+      let resp;
+      try {
+        resp = await fetch('/api/clone', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+      } catch (e) {
+        addEvent('Could not reach the Uncage server', 'error');
+        progressEl.style.display = 'none'; cloneBtn.disabled = false;
+        return;
+      }
+
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        addEvent(data.error || ('HTTP ' + resp.status), 'error');
+        progressEl.style.display = 'none'; cloneBtn.disabled = false;
+        return;
+      }
+
+      const { jobId } = await resp.json();
+
+      // SSE progress stream
+      const es = new EventSource(`/api/events?jobId=${jobId}`);
+      es.onmessage = (e) => {
+        let ev;
+        try { ev = JSON.parse(e.data); } catch { return; }
+        addEvent(ev.message, ev.kind);
+        if (ev.kind === 'done') { es.close(); finish('success', 'Clone complete! Open the folder shown in the terminal — or run `npm run preview` inside it.'); }
+        if (ev.kind === 'error') { es.close(); finish('error', ev.message); }
+      };
+      es.onerror = () => { es.close(); addEvent('Connection lost', 'error'); progressEl.style.display = 'none'; cloneBtn.disabled = false; };
+    }
+
+    function finish(kind, message) {
+      progressEl.style.display = 'none';
+      cloneBtn.disabled = false;
+      resultEl.className = kind === 'success' ? 'success' : 'error';
+      resultEl.innerHTML = '<strong>' + (kind === 'success' ? '✅ Done' : '❌ Error') + '</strong><br/>' + message;
+      resultEl.style.display = 'block';
+    }
+
+    cloneBtn.addEventListener('click', clone);
+    urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') clone(); });
+  </script>
+</body>
+</html>

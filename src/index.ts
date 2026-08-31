@@ -2,11 +2,11 @@ import { Command } from 'commander';
 import { chromium } from 'playwright-extra';
 // @ts-ignore
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
-import { extract } from './extractor.js';
-import { resolveFormat, promptFormat, strategies } from './formats/index.js';
 import { runWizard, printBanner } from './wizard.js';
 import { sanitizeFileName } from './constants.js';
-import type { ExtractorOptions, ExportFormat } from './types.js';
+import { cloneToStaticHtml } from './pipeline.js';
+import { startWebUI } from './server.js';
+import type { ExtractorOptions } from './types.js';
 
 chromium.use(stealthPlugin());
 
@@ -14,11 +14,14 @@ const program = new Command();
 
 program
   .name('uncage')
-  .description('Clone any website into a standalone, dev-ready project (React TSX, React JSX, or Static HTML)')
-  .argument('[url]', 'The target URL to clone (optional: launches interactive wizard if omitted)')
+  .description('Clone any website into a standalone static HTML/CSS/JS project. React/TSX/JSX export is paused.')
+  .argument('[url]', 'The target URL to clone (omit to launch the web UI)')
   .option('-o, --output <dir>', 'Output directory name', '')
-  .option('-f, --format <format>', 'Target export format: react-ts, react-js, html', 'react-ts')
-  .option('-i, --interactive', 'Interactively select the target export format', false)
+  .option('--port <number>', 'Web UI port (when launching the UI)', (val) => {
+    const parsed = parseInt(val, 10);
+    return isNaN(parsed) || parsed < 1 || parsed > 65535 ? 8787 : parsed;
+  }, 8787)
+  .option('--ui', 'Open the web UI even when a URL is provided', false)
   .option('--max-pages <number>', 'Maximum pages to crawl', (val) => {
     const parsed = parseInt(val, 10);
     return isNaN(parsed) || parsed < 1 ? 50 : parsed;
@@ -29,106 +32,106 @@ program
   }, 30000)
   .option('--no-headless', 'Run browser in headful (visible) window mode for debugging')
   .option('--skip-deps', 'Skip recursive dynamic JS module dependency resolution', false)
+  .option('--max-memory <mb>', 'Maximum memory in MB for page buffers (0 = unlimited)', (val) => {
+    const parsed = parseInt(val, 10);
+    return isNaN(parsed) || parsed < 0 ? 0 : parsed;
+  }, 0)
+  .option('--max-depth <number>', 'Maximum link depth from the seed (0 = seed only; default: unlimited)', (val) => {
+    const parsed = parseInt(val, 10);
+    return isNaN(parsed) || parsed < 0 ? undefined : parsed;
+  })
+  .option('--ignore-robots', 'Ignore robots.txt rules and Crawl-delay (only use with permission)', false)
+  .option('--priority-only', 'Crawl only the seed, navigation pages, and high-priority sitemap pages', false)
+  .option('--safe-mode', 'Disable JS execution, only fetch static HTML (faster, safer)', false)
+  .option('--allow-url <pattern>', 'Allow asset URLs matching glob pattern (can repeat)', (val, memo: string[]) => {
+    memo.push(val);
+    return memo;
+  }, [])
+  .option('--block-url <pattern>', 'Block asset URLs matching glob pattern (can repeat)', (val, memo: string[]) => {
+    memo.push(val);
+    return memo;
+  }, [])
   .option('--no-purge', 'Skip PurgeCSS optimization to retain dynamically applied classes')
   .option('--keep-analytics', 'Retain third-party analytics and tracking scripts in the exported project', false)
-  .action(async (targetUrl?: string, opts?: { 
-    output?: string; 
-    format?: string; 
-    interactive?: boolean; 
-    maxPages?: number; 
-    timeout?: number; 
-    headless?: boolean; 
-    skipDeps?: boolean; 
+  .action(async (targetUrl?: string, opts?: {
+    output?: string;
+    port?: number;
+    ui?: boolean;
+    maxPages?: number;
+    timeout?: number;
+    headless?: boolean;
+    skipDeps?: boolean;
+    maxMemory?: number;
+    maxDepth?: number;
+    ignoreRobots?: boolean;
+    priorityOnly?: boolean;
+    safeMode?: boolean;
+    allowUrl?: string[];
+    blockUrl?: string[];
     purge?: boolean;
     keepAnalytics?: boolean;
   }) => {
     try {
-      let url = targetUrl;
+      // No URL (or explicit --ui) → launch the web UI for non-technical users.
+      if (!targetUrl || opts?.ui) {
+        await startWebUI({ port: opts?.port ?? 8787 });
+        return;
+      }
+
+      const startTime = Date.now();
       let outputName = opts?.output || '';
-      let chosenFormat: ExportFormat = 'react-ts';
-      let extractorOptions: ExtractorOptions = {
+      const extractorOptions: ExtractorOptions = {
         maxPages: opts?.maxPages ?? 50,
         timeout: opts?.timeout ?? 30000,
         headless: opts?.headless !== false,
         skipDeps: opts?.skipDeps ?? false,
+        maxMemory: opts?.maxMemory ?? 0,
+        safeMode: opts?.safeMode ?? false,
+        allowUrls: opts?.allowUrl ?? [],
+        blockUrls: opts?.blockUrl ?? [],
       };
+      if (opts?.maxDepth !== undefined) extractorOptions.maxDepth = opts.maxDepth;
+      if (opts?.ignoreRobots === true) extractorOptions.respectRobots = false;
+      if (opts?.priorityOnly === true) extractorOptions.priorityOnly = true;
 
-      // If no URL was passed on the command line, run the interactive wizard.
-      // Wizard answers only override CLI flags the user actually configured there;
-      // flags like --max-pages/--timeout keep their values otherwise.
-      if (!url) {
-        const wizardResult = await runWizard();
-        url = wizardResult.url;
-        outputName = wizardResult.outputName;
-        chosenFormat = wizardResult.format;
-        const wizardOverrides = Object.fromEntries(
-          Object.entries(wizardResult.options).filter(([, v]) => v !== undefined)
-        );
-        extractorOptions = { ...extractorOptions, ...wizardOverrides };
-      } else {
-        printBanner();
-        // Auto-prepend https:// if missing in CLI argument
-        let normalizedUrl = url.trim();
-        if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
-          normalizedUrl = `https://${normalizedUrl}`;
-        }
-        url = normalizedUrl;
+      printBanner();
 
-        if (!outputName) {
-          try {
-            outputName = new URL(url).hostname;
-            if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i.test(outputName)) {
-              outputName += '-site';
-            }
-          } catch {
-            outputName = 'cloned-site';
-          }
-        }
-        
-        if (opts?.interactive) {
-          const strategy = await promptFormat();
-          chosenFormat = strategy.format;
-        } else {
-          chosenFormat = resolveFormat(opts?.format).format;
-        }
+      // Auto-prepend https:// if missing
+      let url = targetUrl.trim();
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = `https://${url}`;
       }
 
-      const startTime = Date.now();
-      const strategy = strategies[chosenFormat];
+      if (!outputName) {
+        try {
+          outputName = new URL(url).hostname;
+          if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i.test(outputName)) {
+            outputName += '-site';
+          }
+        } catch {
+          outputName = 'cloned-site';
+        }
+      }
 
       // extract() sanitizes the name internally; print the same name it will use
       const displayOutputName = sanitizeFileName(outputName) || 'extracted-site';
 
       console.log(`  Target: ${url}`);
-      console.log(`  Format: ${strategy.name}`);
+      console.log(`  Format: Static HTML / CSS / JS`);
       console.log(`  Output: output/${displayOutputName}\n`);
 
-      // Step 1: Extract (stealth crawler, asset harvest, HTML capture)
-      const { pages, outputDir, originalHead, runtimeScripts } = await extract(url, outputName, extractorOptions);
+      const cloneOptions: ExtractorOptions & { purge?: boolean; keepAnalytics?: boolean } = {
+        ...extractorOptions,
+      };
+      if (opts?.purge !== undefined) cloneOptions.purge = opts.purge;
+      if (opts?.keepAnalytics !== undefined) cloneOptions.keepAnalytics = opts.keepAnalytics;
 
-      // Step 1.5: Optimize CSS
-      if (opts?.purge !== false) {
-        const { optimizeExtractedCss } = await import('./optimizer.js');
-        await optimizeExtractedCss(outputDir, pages);
-      } else {
-        console.log('  [Optimizer] Skipping CSS purge (--no-purge)');
-      }
-
-      // Step 2: Compile HTML pages into the chosen target format
-      await strategy.compile(outputDir, pages, runtimeScripts, { keepAnalytics: opts?.keepAnalytics });
-
-      // Step 3: Assemble (scaffold project configuration and entrypoints)
-      await strategy.assemble(outputDir, url, originalHead, Object.keys(pages), runtimeScripts, { keepAnalytics: opts?.keepAnalytics });
+      await cloneToStaticHtml(url, outputName, cloneOptions);
 
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       console.log(`\n  ✅ Successfully exported in ${elapsed}s!`);
-      
-      if (strategy.format === 'html') {
-        console.log(`  🚀 Run static preview: cd output/${displayOutputName} && npm run preview`);
-        console.log(`  📁 Or open output/${displayOutputName}/index.html directly in your browser.\n`);
-      } else {
-        console.log(`  🚀 Run dev server: cd output/${displayOutputName} && npm install && npm run dev\n`);
-      }
+      console.log(`  🚀 Run static preview: cd output/${displayOutputName} && npm run preview`);
+      console.log(`  📁 Or open output/${displayOutputName}/index.html directly in your browser.\n`);
     } catch (err: any) {
       if (err.name === 'ExitPromptError' || err.message?.includes('force closed')) {
         console.log('\n  👋 Operation cancelled. Exiting...\n');

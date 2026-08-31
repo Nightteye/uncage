@@ -1,9 +1,11 @@
-import { input, select, confirm, number } from '@inquirer/prompts';
+import { input, confirm, number } from '@inquirer/prompts';
 import type { ExportFormat, ExtractorOptions } from './types.js';
+import { sanitizeFileName } from './constants.js';
 
 export interface WizardResult {
   url: string;
   outputName: string;
+  /** Static HTML is the only active format; React/TSX/JSX export is paused. */
   format: ExportFormat;
   /** Only contains keys the user explicitly configured; merged over CLI flags. */
   options: Partial<ExtractorOptions>;
@@ -50,35 +52,17 @@ export async function runWizard(): Promise<WizardResult> {
 
     const defaultOutput = new URL(url).hostname;
 
-    // 2. Format Selection
-    const format = await select<ExportFormat>({
-      message: '📦 Choose export format:',
-      choices: [
-        {
-          name: 'React 18 + TypeScript (TSX) [Default]',
-          value: 'react-ts',
-          description: 'Vite + React 18 + TypeScript + React Router project',
-        },
-        {
-          name: 'React 18 + JavaScript (JSX)',
-          value: 'react-js',
-          description: 'Vite + React 18 + JavaScript (clean JSX) + React Router project',
-        },
-        {
-          name: 'Static HTML / CSS / JS',
-          value: 'html',
-          description: 'Pure static multi-page HTML/CSS/JS ready for static hosting or local browsing',
-        },
-      ],
-      default: 'react-ts',
-    });
+    // Static HTML is the only active format (React/TSX/JSX export is paused),
+    // so there is no format prompt — everything exports as static HTML.
+    const format: ExportFormat = 'html';
+    console.log('  📦 Format: Static HTML / CSS / JS');
 
     // 3. Output Directory Name
     const outputName = await input({
       message: '📁 Enter output folder name:',
       default: defaultOutput,
       validate: (val) => {
-        const sanitized = val.trim().replace(/[^a-zA-Z0-9._-]/g, '_');
+        const sanitized = sanitizeFileName(val.trim());
         return sanitized.length > 0 ? true : 'Output folder name cannot be empty';
       },
     });
@@ -116,10 +100,24 @@ export async function runWizard(): Promise<WizardResult> {
         default: false,
       });
 
+      const maxMemory = await number({
+        message: '💾 Max memory for page buffers (MB, 0 = unlimited):',
+        default: 0,
+        min: 0,
+        max: 4096,
+      });
+
+      const safeMode = await confirm({
+        message: '🛡️  Safe mode? Disable JS execution (faster, safer, but no SPA rendering)',
+        default: false,
+      });
+
       options = {
         headless: !showBrowser,
         skipDeps,
       };
+      if (maxMemory !== undefined) options.maxMemory = maxMemory;
+      if (safeMode !== undefined) options.safeMode = safeMode;
       if (maxPages !== undefined) options.maxPages = maxPages;
       if (timeout !== undefined) options.timeout = timeout;
     }

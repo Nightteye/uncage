@@ -1,7 +1,7 @@
 {
   "name": "uncage",
   "version": "1.0.0",
-  "description": "Deterministic, local website cloner and React code exporter",
+  "description": "Local website cloner that exports standalone static HTML, CSS, and JavaScript.",
   "main": "src/index.ts",
   "bin": {
     "uncage": "./bin/uncage.js"
@@ -10,19 +10,24 @@
     "doc": "docs"
   },
   "scripts": {
-    "start": "tsx src/index.ts",
+    "start": "tsx src/index.ts --ui",
     "uncage": "tsx src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "ui": "tsx src/index.ts --ui",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "crawler",
     "scraper",
-    "react",
-    "vite",
-    "exporter",
     "cloner",
     "framer",
-    "webflow"
+    "webflow",
+    "static-html",
+    "html",
+    "playwright",
+    "web-ui"
   ],
   "author": "Nightteye",
   "repository": {
@@ -49,8 +54,10 @@
     "tsx": "^4.23.12"
   },
   "devDependencies": {
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.4.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "ts-node": "^10.9.2",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
   }
 }

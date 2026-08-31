@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#07101e" />
+  <title>React Cloner Status — Uncage</title>
+  <style>
+    :root { color-scheme: dark; --line: rgba(174,198,255,.16); --text: #eff4ff; --muted: #a9b5cc; --cyan: #72e8f5; --violet: #ae9cff; --lime: #b6f36a; }
+    * { box-sizing: border-box; }
+    body { min-height: 100vh; margin: 0; color: var(--text); background: radial-gradient(circle at 12% 4%, rgba(114,232,245,.15), transparent 28rem), radial-gradient(circle at 90% 12%, rgba(174,156,255,.18), transparent 30rem), linear-gradient(145deg, #07101e, #0c1426 50%, #070b15); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body::before { position: fixed; inset: 0; z-index: -1; opacity: .28; background-image: linear-gradient(rgba(147,169,223,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(147,169,223,.08) 1px, transparent 1px); background-size: 44px 44px; mask-image: linear-gradient(to bottom, black, transparent 75%); content: ""; }
+    .shell { width: min(820px, calc(100% - 2rem)); margin: 0 auto; }
+    header { display: flex; align-items: center; justify-content: space-between; min-height: 88px; border-bottom: 1px solid var(--line); }
+    .brand { display: inline-flex; align-items: center; gap: .72rem; color: var(--text); text-decoration: none; font-size: 1.08rem; font-weight: 760; letter-spacing: -.04em; }
+    .mark { display: grid; width: 35px; height: 35px; place-items: center; border: 1px solid rgba(114,232,245,.55); border-radius: 11px; color: var(--cyan); background: linear-gradient(145deg, rgba(114,232,245,.2), rgba(174,156,255,.2)); box-shadow: inset 0 1px rgba(255,255,255,.15); }
+    .back { color: #c8d4ec; font-size: .78rem; text-decoration: none; }
+    .back:hover { color: var(--cyan); }
+    main { padding: clamp(4rem, 11vw, 8rem) 0; }
+    .eyebrow { display: inline-flex; align-items: center; gap: .5rem; color: #fcd34d; font-size: .71rem; font-weight: 760; letter-spacing: .12em; text-transform: uppercase; }
+    .eyebrow::before { width: 25px; height: 1px; background: currentColor; content: ""; }
+    h1 { max-width: 700px; margin: 1rem 0 1.4rem; font-size: clamp(2.7rem, 7vw, 5.4rem); line-height: .96; letter-spacing: -.075em; }
+    h1 span { background: linear-gradient(100deg, #fff 20%, #d8d2ff 60%, #8debf6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .lead { max-width: 650px; color: var(--muted); font-size: 1.05rem; line-height: 1.8; }
+    .notice { display: grid; grid-template-columns: auto 1fr; gap: 1rem; margin-top: 2.5rem; padding: 1.35rem; border: 1px solid var(--line); border-radius: 17px; background: linear-gradient(145deg, rgba(22,34,59,.85), rgba(9,16,30,.9)); box-shadow: 0 22px 65px rgba(0,0,0,.25); }
+    .notice-icon { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid rgba(252,211,77,.3); border-radius: 10px; color: #fde68a; background: rgba(252,211,77,.08); }
+    h2 { margin: .1rem 0 .45rem; color: #e9effb; font-size: 1rem; }
+    .notice p { margin: 0; color: #aebbd2; font-size: .88rem; line-height: 1.65; }
+    .help { margin-top: 1.35rem; padding: 1.35rem; border: 1px solid rgba(182,243,106,.2); border-radius: 17px; background: rgba(182,243,106,.055); }
+    .help h2 { color: #e2f9b5; }
+    .help p { margin: 0; color: #b9c89f; font-size: .88rem; line-height: 1.7; }
+    code { padding: .12rem .3rem; border-radius: 4px; color: #d8e8fa; background: rgba(0,0,0,.25); }
+    @media (max-width: 520px) { .shell { width: min(100% - 1.25rem, 820px); } header { min-height: 72px; } h1 { font-size: clamp(2.55rem, 14vw, 3.55rem); } .notice { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <a class="brand" href="/"><span class="mark" aria-hidden="true">⌬</span>Uncage</a>
+      <a class="back" href="/">Back to exporter</a>
+    </header>
+    <main>
+      <div class="eyebrow">Project status</div>
+      <h1>The React cloner is <span>paused.</span></h1>
+      <p class="lead">The React cloner is paused indefinitely. It needs more work before it is reliable enough to support again, and I do not have a definite release date for its return.</p>
+
+      <section class="notice">
+        <div class="notice-icon" aria-hidden="true">Ⅱ</div>
+        <div>
+          <h2>Why it is paused</h2>
+          <p>There are still many bugs in the React export. Rather than publish an export that may be hard to use or fix, I am focusing Uncage on the static HTML, CSS, and JavaScript exporter for now.</p>
+        </div>
+      </section>
+
+      <section class="help">
+        <h2>Want to help?</h2>
+        <p>The React cloner code is still available in this repository. If you would like to work on it, you can try to fix an issue and open a pull request. Contributions are welcome, and they can help bring the React exporter back in the future.</p>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
