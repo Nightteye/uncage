@@ -8,8 +8,13 @@ import { cloneToStaticHtml } from './pipeline.js';
 import { sanitizeFileName } from './constants.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const UI_FILE = path.join(__dirname, 'ui.html');
-const REACT_STATUS_FILE = path.join(__dirname, 'react-cloner-status.html');
+const UI_DIR = path.join(__dirname, 'ui');
+const UI_FILE = path.join(UI_DIR, 'index.html');
+const REACT_STATUS_FILE = path.join(UI_DIR, 'react-cloner-status.html');
+const TOS_FILE = path.join(UI_DIR, 'tos.html');
+const CHANGELOG_FILE = path.join(UI_DIR, 'changelog.html');
+const BG_VIDEO_FILE = path.join(UI_DIR, 'bg.mp4');
+const BG2_VIDEO_FILE = path.join(UI_DIR, 'bg2.mp4');
 
 export interface WebUIOptions {
   port?: number;
@@ -128,6 +133,52 @@ export function startWebUI({ port = 8787, hostname = 'localhost' }: WebUIOptions
         () => {
           res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
           res.end('<!doctype html><html><body><h1>Page not found</h1></body></html>');
+        }
+      );
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/tos') {
+      void fs.readFile(TOS_FILE, 'utf-8').then(
+        (content) => {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(content);
+        },
+        () => {
+          res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end('<!doctype html><html><body><h1>Page not found</h1></body></html>');
+        }
+      );
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/changelog') {
+      void fs.readFile(CHANGELOG_FILE, 'utf-8').then(
+        (content) => {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(content);
+        },
+        () => {
+          res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end('<!doctype html><html><body><h1>Page not found</h1></body></html>');
+        }
+      );
+      return;
+    }
+
+    if (req.method === 'GET' && (pathname === '/bg.mp4' || pathname === '/bg2.mp4')) {
+      const file = pathname === '/bg.mp4' ? BG_VIDEO_FILE : BG2_VIDEO_FILE;
+      const stat = fs.stat(file);
+      stat.then(
+        (s) => {
+          res.writeHead(200, { 'Content-Type': 'video/mp4', 'Content-Length': s.size });
+          const stream = createReadStream(file);
+          stream.pipe(res);
+        },
+        () => {
+          const body = JSON.stringify({ error: 'Video not found' });
+          res.writeHead(404, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) });
+          res.end(body);
         }
       );
       return;

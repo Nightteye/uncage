@@ -53,7 +53,7 @@ export async function cloneToStaticHtml(
     onProgress,
   });
 
-  emit('done', `Exported ${Object.keys(pages).length} page(s)`);
+  emit('info', `Exported ${Object.keys(pages).length} page(s)`);
   return { pages, outputDir, originalHead, runtimeScripts };
 }
 

@@ -23,9 +23,9 @@ function normalizeUrlInput(val: string): string {
 
 export function printBanner(): void {
   console.log(`
-  ⛓️‍💥 ──────────────────────────────────────────
-     U N C A G E
-     Local Website Cloner & Code Exporter
+  ⬡ ──────────────────────────────────────────
+    U N C A G E
+    Local Website Cloner & Code Exporter
   ──────────────────────────────────────────
 `);
 }

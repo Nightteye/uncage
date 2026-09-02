@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Uncage — Local Website Cloner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ── Tokens ── */
+    :root {
+      --bg: #09090b;
+      --surface: #18181b;
+      --surface-input: #18181b;
+      --border: rgba(255,255,255,0.08);
+      --border-card: rgba(255,255,255,0.12);
+      --border-input: rgba(255,255,255,0.16);
+      --text: #e4e4e7;
+      --text-dim: #a1a1aa;
+      --text-muted: #71717a;
+      --white: #ffffff;
+      --green: #10b981;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+
+    /* ── Background Video & Overlay ── */
+    .bg-vid {
+      position: fixed; inset: 0;
+      width: 100vw; height: 100vh;
+      object-fit: cover;
+      z-index: -2;
+      opacity: 0;
+      transition: opacity 1.5s ease-in-out;
+    }
+    .bg-vid.active {
+      opacity: 0.7;
+    }
+    body::before {
+      content: "";
+      position: fixed; inset: 0; z-index: -1;
+      pointer-events: none;
+      background: radial-gradient(circle at center, rgba(0,0,0,0.3) 0%, rgba(10,10,10,0.8) 100%);
+    }
+
+    /* Increased max-width from 580px to 860px to fix squished look */
+    .page { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 0 20px; }
+
+    /* Reduced vertical padding drastically */
+    .hero { text-align: center; padding: 56px 0 32px; }
+    .hero h1 {
+      font-size: 52px; font-weight: 700;
+      letter-spacing: -0.04em; line-height: 1.05;
+      background: linear-gradient(180deg, #ffffff 0%, #a1a1aa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+      max-width: 520px; margin: 16px auto 0;
+      font-size: 15.5px; line-height: 1.65; color: var(--text-dim);
+      font-weight: 400; letter-spacing: -0.01em;
+    }
+
+    /* Cards fit better horizontally now */
+    .features { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 32px; }
+    .feat {
+      background: rgba(20,20,20,0.4);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--border-card);
+      border-radius: 20px;
+      padding: 20px;
+      transition: border-color 0.25s, background 0.25s;
+    }
+    .feat:hover {
+      border-color: rgba(255,255,255,0.16);
+      background: rgba(30,30,30,0.45);
+    }
+    .feat-icon {
+      width: 40px; height: 40px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      display: grid; place-items: center;
+      background: rgba(0,0,0,0.5);
+      margin-bottom: 14px;
+      font-size: 16px;
+    }
+    .feat strong { display: block; font-size: 14px; font-weight: 600; color: var(--white); margin-bottom: 4px; letter-spacing: -0.01em; }
+    .feat span { display: block; font-size: 13px; line-height: 1.6; color: var(--text-muted); }
+
+    .panel {
+      background: rgba(20,20,20,0.4);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--border-card);
+      border-radius: 28px;
+      padding: 32px 32px;
+      margin-bottom: 24px;
+    }
+    .panel-title {
+      font-size: 22px; font-weight: 600; color: var(--white);
+      letter-spacing: -0.025em; margin-bottom: 24px;
+    }
+
+    .field { margin-bottom: 20px; }
+    .field-label {
+      display: block; font-size: 13px; font-weight: 500; color: var(--text-dim);
+      margin-bottom: 8px; letter-spacing: -0.01em;
+    }
+    .field-input {
+      width: 100%; height: 50px; padding: 0 16px;
+      background: rgba(0,0,0,0.4);
+      border: 1.5px solid var(--border-input);
+      border-radius: 14px;
+      color: var(--text); font-size: 14px; font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .field-input:hover { border-color: rgba(255,255,255,0.22); }
+    .field-input:focus { border-color: rgba(255,255,255,0.35); box-shadow: 0 0 0 3px rgba(255,255,255,0.04); }
+    .field-input::placeholder { color: var(--text-muted); }
+    .field-hint { margin-top: 6px; font-size: 11.5px; color: var(--text-muted); }
+
+    .finetune {
+      background: rgba(0,0,0,0.3);
+      border: 1.5px solid var(--border-card);
+      border-radius: 18px;
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    .finetune[open] { border-color: rgba(255,255,255,0.14); }
+    .finetune-summary {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px;
+      font-size: 14px; font-weight: 600; color: var(--white);
+      cursor: pointer; user-select: none; list-style: none;
+    }
+    .finetune-summary::-webkit-details-marker { display: none; }
+    .finetune-chevron { transition: transform 0.25s; color: var(--text-dim); font-size: 18px; }
+    .finetune[open] .finetune-chevron { transform: rotate(180deg); }
+    .finetune-body { padding: 0 20px 18px; }
+    .finetune-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 10px; }
+    .finetune-row2 .field { margin-bottom: 0; }
+
+    .toggle {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .toggle:last-child { border-bottom: none; }
+    .toggle input { display: none; }
+    .toggle-track {
+      width: 36px; height: 20px; flex-shrink: 0;
+      background: rgba(255,255,255,0.08);
+      border-radius: 20px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-track::after {
+      content: "";
+      position: absolute; top: 3px; left: 3px;
+      width: 14px; height: 14px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .toggle input:checked + .toggle-track {
+      background: rgba(255,255,255,0.18);
+    }
+    .toggle input:checked + .toggle-track::after {
+      transform: translateX(16px);
+      background: var(--white);
+    }
+    .toggle-label {
+      font-size: 13.5px; font-weight: 500; color: var(--text-dim);
+      cursor: pointer;
+    }
+
+    .export-btn {
+      width: 100%; height: 52px;
+      background: transparent;
+      border: 1.5px solid rgba(255,255,255,0.22);
+      border-radius: 16px;
+      color: var(--white);
+      font-size: 15px; font-weight: 700; font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+    }
+    .export-btn:hover:not(:disabled) {
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(255,255,255,0.35);
+      transform: translateY(-1px);
+    }
+    .export-btn:active:not(:disabled) { transform: translateY(0); }
+    .export-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .panel-footer { margin-top: 16px; text-align: center; font-size: 12px; color: var(--text-muted); }
+
+    #progress {
+      display: none;
+      background: rgba(20,20,20,0.4);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--border-card);
+      border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .term-bar {
+      display: flex; align-items: center; gap: 6px;
+      padding: 12px 18px;
+      background: rgba(0,0,0,0.5);
+      border-bottom: 1px solid var(--border);
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #febc2e; }
+    .dot-g { background: #28c840; }
+    .term-title { margin-left: 8px; font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
+    #events {
+      list-style: none; padding: 14px 18px; margin: 0;
+      display: flex; flex-direction: column; gap: 1px;
+      max-height: 320px; overflow-y: auto;
+      font-family: 'SF Mono','Cascadia Code','Fira Code','Consolas',monospace;
+      font-size: 12.5px; line-height: 1.85;
+    }
+    #events li { color: var(--text-muted); }
+    #events li.ev-error { color: var(--red); }
+    #events li.ev-done { color: var(--green); }
+
+    #result {
+      display: none; padding: 18px 22px;
+      border-radius: 18px; margin-bottom: 24px;
+      font-size: 14px; line-height: 1.55;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+    }
+    #result.success { background: rgba(45,212,99,0.1); border: 1px solid rgba(45,212,99,0.3); color: var(--green); }
+    #result.error { background: rgba(255,0,68,0.1); border: 1px solid rgba(255,0,68,0.3); color: var(--red); }
+
+    .overlay {
+      display: none; position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      width: 100%; max-width: 580px; max-height: 85vh;
+      overflow-y: auto;
+      background: rgba(20,20,20,0.65);
+      backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 24px;
+      padding: 48px 40px;
+      position: relative;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.8);
+    }
+    .modal-x {
+      position: absolute; top: 20px; right: 20px;
+      width: 32px; height: 32px;
+      background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      color: var(--text-muted); font-size: 18px;
+      cursor: pointer; display: grid; place-items: center;
+      font-family: inherit; transition: color 0.2s, background 0.2s;
+    }
+    .modal-x:hover { color: var(--white); background: rgba(0,0,0,0.7); }
+    .modal h2 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; color: var(--white); padding-right: 40px; }
+    .modal .sub { font-size: 15px; color: var(--text-dim); margin-bottom: 32px; line-height: 1.6; }
+    .modal h3 {
+      font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--text-dim); margin: 36px 0 16px;
+    }
+    .modal h3:first-of-type { margin-top: 0; }
+    .modal p, .modal li { font-size: 14.5px; line-height: 1.8; color: var(--text-dim); }
+    .modal p { margin-bottom: 16px; }
+    .modal ol, .modal ul { padding-left: 24px; margin: 12px 0; }
+    .modal li { margin-bottom: 12px; }
+    .modal code {
+      padding: 4px 8px; border-radius: 6px;
+      background: rgba(255,255,255,0.08); color: var(--text);
+      font-size: 13.5px;
+      font-family: 'SF Mono','Cascadia Code','Fira Code','Consolas',monospace;
+    }
+    .modal .callout {
+      margin-top: 24px; padding: 18px 20px;
+      border-radius: 14px; font-size: 14px; line-height: 1.6;
+    }
+    .callout-tip { background: rgba(45,212,99,0.04); border: 1px solid rgba(45,212,99,0.12); color: rgba(45,212,99,0.85); }
+    .callout-warn { background: rgba(245,197,66,0.04); border: 1px solid rgba(245,197,66,0.12); color: rgba(245,197,66,0.8); margin-top: 10px; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+    @media (max-width: 600px) {
+      .features { grid-template-columns: 1fr; }
+      .finetune-row2 { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 36px; }
+      .hero { padding: 32px 0 24px; }
+      .panel { padding: 24px; border-radius: 22px; }
+      .modal { padding: 24px; }
+    }
+  
+    /* --- Premium Navbar --- */
+    .nav-wrap { max-width: 860px; margin: 24px auto 0; padding: 0 20px; position: relative; z-index: 10; }
+    .nav-border-glow {
+      position: absolute; inset: 0 20px; border-radius: 100px; padding: 1.5px;
+      background: radial-gradient(400px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(139,92,246,0.8), transparent 40%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 11;
+    }
+    .nav-wrap:hover .nav-border-glow { opacity: 1; }
+    .nav-border-glow::before {
+      content: ""; position: absolute; inset: 0; border-radius: 100px; padding: 1.5px;
+      background: linear-gradient(90deg, transparent, rgba(236,72,153,0.5), rgba(139,92,246,0.8), transparent);
+      background-size: 200% 100%;
+      animation: running-glow 4s linear infinite;
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+    }
+    .nav-wrap:hover .nav-border-glow::before { opacity: 0; }
+    @keyframes running-glow { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    .nav {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 56px; padding: 0 10px 0 24px;
+      background: rgba(15, 15, 15, 0.55);
+      backdrop-filter: blur(32px) saturate(120%); -webkit-backdrop-filter: blur(32px) saturate(120%);
+      border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 100px;
+      box-shadow: 0 16px 32px rgba(0,0,0,0.4);
+      position: relative;
+    }
+    .nav-brand { font-size: 15px; font-weight: 600; color: var(--white); letter-spacing: -0.03em; text-decoration: none; display: flex; align-items: center; gap: 8px;}
+    .nav-actions { display: flex; align-items: center; gap: 8px; }
+    
+    .nav-guide {
+      display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 16px;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 100px;
+      font-size: 13px; font-weight: 600; color: var(--text-dim); cursor: pointer; text-decoration: none;
+      transition: all 0.2s; font-family: inherit;
+    }
+    .nav-guide:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: var(--white); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .nav-guide.warn { color: var(--warn); }
+    .nav-guide.warn:hover { color: var(--warn); border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.08); }
+
+    .nav-badge {
+      display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 100px;
+      font-size: 13px; font-weight: 500; color: var(--text-dim); letter-spacing: -0.01em;
+    }
+    .nav-badge::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+      box-shadow: 0 0 10px rgba(16,185,129,0.8); animation: pulse-green 2s infinite;
+    }
+    @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); } 70% { box-shadow: 0 0 0 6px rgba(16,185,129,0); } 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); } }
+
+    /* --- Premium Footer --- */
+    .site-footer {
+      margin-top: 80px; padding: 48px 20px 64px;
+      border-top: 1px solid var(--border-card);
+      background: rgba(10, 10, 10, 0.4); backdrop-filter: blur(24px);
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+    }
+    .site-footer .logo-icon { width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 10px; display: grid; place-items: center; background: rgba(0,0,0,0.4); font-size: 16px; color: var(--white); margin-bottom: 8px; }
+    .site-footer p { font-size: 14px; color: var(--text-muted); max-width: 400px; text-align: center; line-height: 1.6; }
+    .site-footer .links { display: flex; gap: 24px; margin-top: 12px; }
+    .site-footer .links a { font-size: 14px; color: var(--text-dim); text-decoration: none; transition: color 0.2s; }
+    .site-footer .links a:hover { color: var(--white); }
+
+  </style>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%2309090b'/><g fill='none' stroke='%23ffffff' stroke-linejoin='round' stroke-linecap='round' transform='translate(50, 50) scale(1.6) translate(-12, -12)'><path d='M12 2.5 L21 7.5 V16.5 L12 21.5 L3 16.5 V7.5 Z' stroke-width='2'/><path d='M11.5 7.5 L6.5 10.2 V13.8 L11.5 16.5' stroke-width='3'/></g></svg>">
+</head>
+<body>
+
+  <video id="bg1" class="bg-vid active" muted playsinline>
+    <source src="/bg.mp4" type="video/mp4" />
+  </video>
+  <video id="bg2" class="bg-vid" muted playsinline>
+    <source src="/bg.mp4" type="video/mp4" />
+  </video>
+
+  <div class="overlay" id="guideOverlay">
+    <div class="modal">
+      <button class="modal-x" id="guideClose">×</button>
+      <h2>How to use Uncage</h2>
+      <p class="sub">Everything you need to get a clean static export.</p>
+      <h3>1. Basic export</h3>
+      <ol>
+        <li>Paste the full URL of the site you want to clone (e.g. <code>https://example.com</code>).</li>
+        <li>Optionally name your output folder — it defaults to the hostname.</li>
+        <li>Click <strong>Start Export</strong> and watch the terminal log below.</li>
+        <li>When it's done, your files are in <code>output/&lt;folder&gt;/</code>.</li>
+      </ol>
+      <h3>2. Preview your clone</h3>
+      <p>Open a terminal and run:</p>
+      <p style="margin-top:6px"><code>cd output/&lt;folder&gt; && npm run preview</code></p>
+      <p style="margin-top:6px">This starts a local server so you can see the cloned site in your browser.</p>
+      <h3>3. Fine-tuning options</h3>
+      <ul>
+        <li><strong>Max pages</strong> — Cap how many pages to crawl (default: 50).</li>
+        <li><strong>Timeout</strong> — How long to wait for each page (default: 30s).</li>
+        <li><strong>Max link depth</strong> — 0 = just the seed page.</li>
+        <li><strong>Headless</strong> — Turn off to watch the browser crawl live.</li>
+        <li><strong>Respect robots.txt</strong> — On by default.</li>
+        <li><strong>Safe mode</strong> — Disables JS. Faster, can't render SPAs.</li>
+        <li><strong>Skip CSS purge</strong> — Keeps all classes if dynamic styles look broken.</li>
+      </ul>
+      <div class="callout callout-tip">
+        <strong>Tip:</strong> If an export looks broken, try enabling <strong>Skip CSS purge</strong>. PurgeCSS can strip dynamically-applied classes.
+      </div>
+      <div class="callout callout-warn">
+        <strong>Remember:</strong> Only clone sites you own or have permission to capture.
+      </div>
+      <button class="btn" id="guideAckBtn" style="width: 100%; margin-top: 32px; height: 50px; font-size: 14.5px;">I understand and acknowledge</button>
+    </div>
+  </div>
+
+  
+  <div class="nav-wrap" id="navWrap">
+    <div class="nav-border-glow"></div>
+    <nav class="nav">
+      <a href="/" class="nav-brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" style="width: 20px; height: 20px; color: var(--white);"><path d="M12 2.5 L21 7.5 V16.5 L12 21.5 L3 16.5 V7.5 Z" stroke-width="2"/><path d="M11.5 7.5 L6.5 10.2 V13.8 L11.5 16.5" stroke-width="3"/></svg> Uncage</a>
+      <div class="nav-actions">
+        <a href="/react-cloner-status" class="nav-guide warn">React Paused</a>
+        <button class="nav-guide" id="guideBtn" onclick="const o = document.getElementById('guideOverlay'); if(o) o.classList.add('open');">? Guide</button>
+        <div class="nav-badge">Runs locally</div>
+      </div>
+    </nav>
+  </div>
+
+
+  <div class="page">
+    <section class="hero">
+      <h1>Clone any website into portable static files</h1>
+      <p>Download entire websites including HTML, CSS, JavaScript, and assets for offline use, archiving, or deployment.</p>
+    </section>
+
+    <section class="features">
+      <div class="feat">
+        <div class="feat-icon">⊙</div>
+        <strong>Browser-grade capture</strong>
+        <span>Rendered pages with full JS execution, not a surface scrape.</span>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">⬡</div>
+        <strong>Assets made portable</strong>
+        <span>Images, fonts, CSS, JS, and media saved locally with rewritten paths.</span>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">△</div>
+        <strong>Hosting-ready output</strong>
+        <span>Preview locally or deploy to Netlify, Vercel, Pages, or any host.</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">Clone panel</div>
+
+      <div class="field">
+        <label class="field-label" for="url">Website URL</label>
+        <input class="field-input" id="url" type="text" placeholder="https://www.example.com" autocomplete="url" inputmode="url" />
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="outputName">Output folder</label>
+        <input class="field-input" id="outputName" type="text" placeholder="Browser path to output folder" autocomplete="off" />
+        <div class="field-hint">Saved inside your local output/ directory.</div>
+      </div>
+
+      <details class="finetune">
+        <summary class="finetune-summary">Fine-tune <span class="finetune-chevron">⌃</span></summary>
+        <div class="finetune-body">
+          <div class="finetune-row2">
+            <div class="field"><label class="field-label" for="maxPages">Max pages</label><input class="field-input" id="maxPages" type="number" placeholder="50" /></div>
+            <div class="field"><label class="field-label" for="timeout">Timeout (ms)</label><input class="field-input" id="timeout" type="number" placeholder="30000" /></div>
+          </div>
+          <div class="field"><label class="field-label" for="maxDepth">Max link depth</label><input class="field-input" id="maxDepth" type="number" min="0" placeholder="Unlimited (0 = seed only)" /></div>
+
+          <label class="toggle"><input id="headless" type="checkbox" checked /><span class="toggle-track"></span><span class="toggle-label">Headless browser (uncheck to watch)</span></label>
+          <label class="toggle"><input id="respectRobots" type="checkbox" checked /><span class="toggle-track"></span><span class="toggle-label">Respect robots.txt and crawl delay</span></label>
+          <label class="toggle"><input id="priorityOnly" type="checkbox" /><span class="toggle-track"></span><span class="toggle-label">Priority pages only (sitemap ≥ 0.5)</span></label>
+          <label class="toggle"><input id="safeMode" type="checkbox" /><span class="toggle-track"></span><span class="toggle-label">Safe mode — disable JS</span></label>
+          <label class="toggle"><input id="skipDeps" type="checkbox" /><span class="toggle-track"></span><span class="toggle-label">Skip JS dependency scanning</span></label>
+          <label class="toggle"><input id="keepAnalytics" type="checkbox" /><span class="toggle-track"></span><span class="toggle-label">Keep analytics and tracking scripts</span></label>
+          <label class="toggle"><input id="noPurge" type="checkbox" /><span class="toggle-track"></span><span class="toggle-label">Skip CSS purge (keep all classes)</span></label>
+        </div>
+      </details>
+
+      <button class="export-btn" id="cloneBtn" type="button">Start Export</button>
+
+      <div class="panel-footer">Your files stay local. Review target-site permissions before cloning.</div>
+    </section>
+
+    <div id="progress">
+      <div class="term-bar">
+        <span class="dot dot-r"></span>
+        <span class="dot dot-y"></span>
+        <span class="dot dot-g"></span>
+        <span class="term-title">Cloning…</span>
+      </div>
+      <ul id="events"></ul>
+    </div>
+
+    <div id="result"></div>
+
+    <footer class="site-footer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" style="width: 36px; height: 36px; color: var(--white); margin-bottom: 12px;"><path d="M12 2.5 L21 7.5 V16.5 L12 21.5 L3 16.5 V7.5 Z" stroke-width="2"/><path d="M11.5 7.5 L6.5 10.2 V13.8 L11.5 16.5" stroke-width="3"/></svg>
+      <p>Uncage is a local development tool for capturing and archiving static exports of Framer, Webflow, and React sites.</p>
+      <div class="links">
+        <a href="/">Home</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/react-cloner-status">React Status</a>
+        <a href="/tos">Terms of Service</a>
+        <a href="https://github.com/Nightteye/uncage" target="_blank">GitHub</a>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    /* Seamless Video Looper */
+    const v1 = document.getElementById('bg1');
+    const v2 = document.getElementById('bg2');
+    let activeVid = v1;
+    let inactiveVid = v2;
+    const fadeDuration = 1.5; // seconds before end to start crossfade
+    
+    // Play the first video immediately
+    v1.play().catch(()=>{});
+
+    function handleTimeUpdate(e) {
+      const vid = e.target;
+      if (vid !== activeVid) return; // Only process the currently active video
+
+      const timeLeft = vid.duration - vid.currentTime;
+      if (timeLeft <= fadeDuration && inactiveVid.paused) {
+        // Start playing the inactive video and crossfade
+        inactiveVid.currentTime = 0;
+        inactiveVid.play().catch(()=>{});
+        inactiveVid.classList.add('active');
+        activeVid.classList.remove('active');
+        
+        // Swap references
+        const temp = activeVid;
+        activeVid = inactiveVid;
+        inactiveVid = temp;
+      }
+    }
+
+    v1.addEventListener('timeupdate', handleTimeUpdate);
+    v2.addEventListener('timeupdate', handleTimeUpdate);
+
+    /* Guide modal */
+    const ov = document.getElementById('guideOverlay');
+    document.getElementById('guideBtn').onclick = () => ov.classList.add('open');
+    document.getElementById('guideClose').onclick = close;
+    document.getElementById('guideAckBtn').onclick = close;
+    ov.onclick = e => { if (e.target === ov) close(); };
+    document.onkeydown = e => { if (e.key === 'Escape') close(); };
+    function close() { ov.classList.remove('open'); localStorage.setItem('uncage-guide-seen','1'); }
+    if (!localStorage.getItem('uncage-guide-seen')) ov.classList.add('open');
+
+    const urlInput = document.getElementById('url');
+    const outInput = document.getElementById('outputName');
+    const cloneBtn = document.getElementById('cloneBtn');
+    const progressEl = document.getElementById('progress');
+    const eventsEl = document.getElementById('events');
+    const resultEl = document.getElementById('result');
+
+    urlInput.oninput = () => {
+      if (!outInput.value) {
+        try { const u = new URL(urlInput.value.startsWith('http') ? urlInput.value : 'https://'+urlInput.value); outInput.value = u.hostname; } catch { outInput.value = ''; }
+      }
+    };
+
+    function addEvent(msg, kind) {
+      const li = document.createElement('li');
+      li.innerHTML = (kind==='error'?'✗ ':kind==='done'?'✓ ':'› ')+msg;
+      if (kind==='error') li.className='ev-error';
+      if (kind==='done') li.className='ev-done';
+      eventsEl.appendChild(li);
+      li.scrollIntoView({block:'end'});
+    }
+    function num(id){const v=document.getElementById(id).value;return v?Number(v):undefined;}
+    function bool(id){return document.getElementById(id).checked;}
+
+    async function doClone(){
+      const url=urlInput.value.trim(); if(!url) return;
+      const host=url.startsWith('http')?url:'https://'+url;
+      eventsEl.innerHTML=''; resultEl.style.display='none';
+      cloneBtn.disabled=true; cloneBtn.textContent='Cloning…';
+      progressEl.style.display='block';
+
+      const body={url:host,outputName:outInput.value.trim()||undefined,headless:bool('headless'),safeMode:bool('safeMode'),respectRobots:bool('respectRobots'),priorityOnly:bool('priorityOnly'),skipDeps:bool('skipDeps'),keepAnalytics:bool('keepAnalytics'),noPurge:bool('noPurge'),maxPages:num('maxPages'),maxDepth:num('maxDepth'),timeout:num('timeout')};
+
+      let resp;
+      try { resp=await fetch('/api/clone',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); }
+      catch{ addEvent('Could not reach the Uncage server','error'); reset(); return; }
+
+      if(!resp.ok){ const d=await resp.json().catch(()=>({})); addEvent(d.error||('HTTP '+resp.status),'error'); reset(); return; }
+
+      const {jobId}=await resp.json();
+      const es=new EventSource(`/api/events?jobId=${jobId}`);
+      es.onmessage=e=>{ let ev; try{ev=JSON.parse(e.data)}catch{return} addEvent(ev.message,ev.kind);
+        if(ev.kind==='done'){es.close();finish('success','Clone complete! Run npm run preview inside the output folder.');}
+        if(ev.kind==='error'){es.close();finish('error',ev.message);}
+      };
+      es.onerror=()=>{es.close();addEvent('Connection lost','error');reset();};
+    }
+    function reset(){progressEl.style.display='none';cloneBtn.disabled=false;cloneBtn.textContent='Start Export';}
+    function finish(k,m){cloneBtn.disabled=false;cloneBtn.textContent='Start Export';resultEl.className=k==='success'?'success':'error';resultEl.innerHTML='<strong>'+(k==='success'?'✓ Done':'✗ Error')+'</strong><br/>'+m;resultEl.style.display='block';}
+
+    cloneBtn.onclick=doClone;
+    urlInput.onkeypress=e=>{if(e.key==='Enter')doClone();};
+  
+    const navWrap = document.getElementById('navWrap');
+    if (navWrap) {
+      navWrap.addEventListener('mousemove', e => {
+        const rect = navWrap.getBoundingClientRect();
+        navWrap.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
+        navWrap.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
+      });
+    }
+
+  </script>
+</body>
+</html>

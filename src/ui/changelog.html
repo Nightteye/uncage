@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <title>Why React Export is Paused — Uncage</title>
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: #18181b;
+      --surface-input: #18181b;
+      --border: rgba(255,255,255,0.08);
+      --border-card: rgba(255,255,255,0.12);
+      --border-input: rgba(255,255,255,0.16);
+      --text: #e4e4e7;
+      --text-dim: #a1a1aa;
+      --text-muted: #71717a;
+      --white: #ffffff;
+      --green: #10b981;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --warn: #f59e0b;
+      --accent: #ffffff;
+      --text-secondary: #a1a1aa;
+      --radius: 20px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+
+    /* ── Background Video & Overlay ── */
+    .bg-vid {
+      position: fixed; inset: 0;
+      width: 100vw; height: 100vh;
+      object-fit: cover;
+      z-index: -2;
+      opacity: 0;
+      transition: opacity 1.5s ease-in-out;
+    }
+    .bg-vid.active {
+      opacity: 0.7;
+    }
+    body::before {
+      content: "";
+      position: fixed; inset: 0; z-index: -1;
+      pointer-events: none;
+      background: radial-gradient(circle at center, rgba(0,0,0,0.3) 0%, rgba(10,10,10,0.8) 100%);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 1.25rem;
+    }
+
+    /* ── Nav ── */
+    /* ── Content ── */
+    main {
+      padding: 4.5rem 0 5rem;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--warn);
+      margin-bottom: 1rem;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 22px;
+      height: 1px;
+      background: currentColor;
+    }
+
+    h1 {
+      font-size: clamp(2.2rem, 6vw, 3.2rem);
+      font-weight: 760;
+      letter-spacing: -0.045em;
+      line-height: 1.04;
+      color: var(--accent);
+      margin-bottom: 1.2rem;
+    }
+
+    .lead {
+      max-width: 520px;
+      font-size: 0.95rem;
+      line-height: 1.75;
+      color: var(--text-secondary);
+      margin-bottom: 2.5rem;
+    }
+
+    /* ── Cards ── */
+    .card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(20,20,20,0.4);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      padding: 2.2rem 2rem;
+      margin-bottom: 1.5rem;
+    }
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.2rem;
+      margin-bottom: 1.2rem;
+    }
+    .card-icon {
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+    .card-icon.warn {
+      border: 1px solid rgba(234,179,8,0.2);
+      color: rgba(234,179,8,0.85);
+      background: rgba(234,179,8,0.06);
+    }
+    .card-icon.success {
+      border: 1px solid rgba(34,197,94,0.2);
+      color: rgba(34,197,94,0.85);
+      background: rgba(34,197,94,0.06);
+    }
+    .card-icon.info {
+      border: 1px solid var(--border-hover);
+      color: var(--text-secondary);
+      background: rgba(0,0,0,0.4);
+    }
+
+    .card h2 {
+      font-size: 1.05rem;
+      font-weight: 680;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.25rem;
+    }
+    .card p {
+      font-size: 0.92rem;
+      line-height: 1.85;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+    .card p:last-child { margin-bottom: 0; }
+    .card ul {
+      padding-left: 1.2rem;
+      margin: 1.2rem 0 0;
+    }
+    .card li {
+      font-size: 0.9rem;
+      line-height: 1.8;
+      color: var(--text-secondary);
+      margin-bottom: 0.75rem;
+    }
+    .card code {
+      padding: 0.15rem 0.4rem;
+      border-radius: 5px;
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      font-size: 0.85rem;
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    }
+
+    /* ── Timeline ── */
+    .timeline {
+      margin: 32px 0;
+      padding-left: 24px;
+      border-left: 1px solid var(--border-card);
+    }
+    .timeline-item {
+      position: relative;
+      padding-bottom: 40px;
+    }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: -29px;
+      top: 6px;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 1.5px solid var(--text-muted);
+    }
+    .timeline-item h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--white);
+      margin-bottom: 8px;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .commit-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .commit-meta a {
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .commit-meta a:hover {
+      color: var(--white);
+    }
+    .dot-sep {
+      color: var(--border-input);
+    }
+    .commit-body {
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--text-dim);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      white-space: pre-wrap;
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    /* ── Footer ── */
+    @media (max-width: 500px) {
+      main { padding: 3rem 0 4rem; }
+      .card { padding: 1.2rem; }
+    }
+  
+    /* --- Premium Navbar --- */
+    .nav-wrap { max-width: 860px; margin: 24px auto 0; padding: 0 20px; position: relative; z-index: 10; }
+    .nav-border-glow {
+      position: absolute; inset: 0 20px; border-radius: 100px; padding: 1.5px;
+      background: radial-gradient(400px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(139,92,246,0.8), transparent 40%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 11;
+    }
+    .nav-wrap:hover .nav-border-glow { opacity: 1; }
+    .nav-border-glow::before {
+      content: ""; position: absolute; inset: 0; border-radius: 100px; padding: 1.5px;
+      background: linear-gradient(90deg, transparent, rgba(236,72,153,0.5), rgba(139,92,246,0.8), transparent);
+      background-size: 200% 100%;
+      animation: running-glow 4s linear infinite;
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+    }
+    .nav-wrap:hover .nav-border-glow::before { opacity: 0; }
+    @keyframes running-glow { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    .nav {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 56px; padding: 0 10px 0 24px;
+      background: rgba(15, 15, 15, 0.55);
+      backdrop-filter: blur(32px) saturate(120%); -webkit-backdrop-filter: blur(32px) saturate(120%);
+      border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 100px;
+      box-shadow: 0 16px 32px rgba(0,0,0,0.4);
+      position: relative;
+    }
+    .nav-brand { font-size: 15px; font-weight: 600; color: var(--white); letter-spacing: -0.03em; text-decoration: none; display: flex; align-items: center; gap: 8px;}
+    .nav-actions { display: flex; align-items: center; gap: 8px; }
+    
+    .nav-guide {
+      display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 16px;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 100px;
+      font-size: 13px; font-weight: 600; color: var(--text-dim); cursor: pointer; text-decoration: none;
+      transition: all 0.2s; font-family: inherit;
+    }
+    .nav-guide:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: var(--white); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .nav-guide.warn { color: var(--warn); }
+    .nav-guide.warn:hover { color: var(--warn); border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.08); }
+
+    .nav-badge {
+      display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 100px;
+      font-size: 13px; font-weight: 500; color: var(--text-dim); letter-spacing: -0.01em;
+    }
+    .nav-badge::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+      box-shadow: 0 0 10px rgba(16,185,129,0.8); animation: pulse-green 2s infinite;
+    }
+    @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); } 70% { box-shadow: 0 0 0 6px rgba(16,185,129,0); } 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); } }
+
+    /* --- Premium Footer --- */
+    .site-footer {
+      margin-top: 80px; padding: 48px 20px 64px;
+      border-top: 1px solid var(--border-card);
+      background: rgba(10, 10, 10, 0.4); backdrop-filter: blur(24px);
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+    }
+    .site-footer .logo-icon { width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 10px; display: grid; place-items: center; background: rgba(0,0,0,0.4); font-size: 16px; color: var(--white); margin-bottom: 8px; }
+    .site-footer p { font-size: 14px; color: var(--text-muted); max-width: 400px; text-align: center; line-height: 1.6; }
+    .site-footer .links { display: flex; gap: 24px; margin-top: 12px; }
+    .site-footer .links a { font-size: 14px; color: var(--text-dim); text-decoration: none; transition: color 0.2s; }
+    .site-footer .links a:hover { color: var(--white); }
+
+  </style>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%2309090b'/><g fill='none' stroke='%23ffffff' stroke-linejoin='round' stroke-linecap='round' transform='translate(50, 50) scale(1.6) translate(-12, -12)'><path d='M12 2.5 L21 7.5 V16.5 L12 21.5 L3 16.5 V7.5 Z' stroke-width='2'/><path d='M11.5 7.5 L6.5 10.2 V13.8 L11.5 16.5' stroke-width='3'/></g></svg>">
+</head>
+<body>
+  <video id="bg1" class="bg-vid active" muted playsinline>
+    <source src="/bg.mp4" type="video/mp4" />
+  </video>
+  <video id="bg2" class="bg-vid" muted playsinline>
+    <source src="/bg.mp4" type="video/mp4" />
+  </video>
+
+  
+  <div class="nav-wrap" id="navWrap">
+    <div class="nav-border-glow"></div>
+    <nav class="nav">
+      <a href="/" class="nav-brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" style="width: 20px; height: 20px; color: var(--white);"><path d="M12 2.5 L21 7.5 V16.5 L12 21.5 L3 16.5 V7.5 Z" stroke-width="2"/><path d="M11.5 7.5 L6.5 10.2 V13.8 L11.5 16.5" stroke-width="3"/></svg> Uncage</a>
+      <div class="nav-actions">
+        <a href="/react-cloner-status" class="nav-guide warn">React Paused</a>
+        <button class="nav-guide" id="guideBtn" onclick="const o = document.getElementById('guideOverlay'); if(o) o.classList.add('open');">? Guide</button>
+        <div class="nav-badge">Runs locally</div>
+      </div>
+    </nav>
+  </div>
+
+
+  <div class="container">
+    <main>
+      <div class="eyebrow">Updates</div>
+      <h1>Changelog.</h1>
+      <p class="lead">Latest commits fetched live from the Uncage repository.</p>
+
+      <div class="timeline" id="commitList">
+        <p style="color: var(--text-muted); font-size: 14px;">Loading latest commits...</p>
+      </div>
+    </main>
+
+    <script>
+      async function loadChangelog() {
+        const list = document.getElementById('commitList');
+        try {
+          const res = await fetch('https://api.github.com/repos/Nightteye/uncage/commits');
+          const commits = await res.json();
+          list.innerHTML = commits.slice(0, 15).map(c => {
+            const parts = c.commit.message.split('\n');
+            const title = parts[0].replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const rawBody = parts.slice(1).join('\n').trim();
+            const bodyHtml = rawBody ? `<div class="commit-body">${rawBody.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>` : '';
+            const dateStr = new Date(c.commit.author.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            
+            return `
+              <div class="timeline-item">
+                <h3>${title}</h3>
+                <div class="commit-meta">
+                  <span>${dateStr}</span>
+                  <span class="dot-sep">·</span>
+                  <span>${c.commit.author.name.replace(/</g, '&lt;')}</span>
+                  <span class="dot-sep">·</span>
+                  <a href="${c.html_url}" target="_blank">View commit →</a>
+                </div>
+                ${bodyHtml}
+              </div>
+            `;
+          }).join('');
+        } catch(e) {
+          list.innerHTML = '<p>Could not load changelog.</p>';
+        }
+      }
+      loadChangelog();
+    </script>
+
+    
+  <footer class="site-footer">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" style="width: 36px; height: 36px; color: var(--white); margin-bottom: 12px;"><path d="M12 2.5 L21 7.5 V16.5 L12 21.5 L3 16.5 V7.5 Z" stroke-width="2"/><path d="M11.5 7.5 L6.5 10.2 V13.8 L11.5 16.5" stroke-width="3"/></svg>
+    <p>Uncage is a local development tool for capturing and archiving static exports of Framer, Webflow, and React sites.</p>
+    <div class="links">
+      <a href="/">Home</a>
+      <a href="/changelog">Changelog</a>
+      <a href="/react-cloner-status">React Status</a>
+      <a href="/tos">Terms of Service</a>
+      <a href="https://github.com/Nightteye/uncage" target="_blank">GitHub</a>
+    </div>
+  </footer>
+
+  </div>
+
+  <script>
+    /* Seamless Video Looper */
+    const v1 = document.getElementById('bg1');
+    const v2 = document.getElementById('bg2');
+    let activeVid = v1;
+    let inactiveVid = v2;
+    const fadeDuration = 1.5; 
+    
+    v1.play().catch(()=>{});
+
+    function handleTimeUpdate(e) {
+      const vid = e.target;
+      if (vid !== activeVid) return;
+
+      const timeLeft = vid.duration - vid.currentTime;
+      if (timeLeft <= fadeDuration && inactiveVid.paused) {
+        inactiveVid.currentTime = 0;
+        inactiveVid.play().catch(()=>{});
+        inactiveVid.classList.add('active');
+        activeVid.classList.remove('active');
+        
+        const temp = activeVid;
+        activeVid = inactiveVid;
+        inactiveVid = temp;
+      }
+    }
+
+    v1.addEventListener('timeupdate', handleTimeUpdate);
+    v2.addEventListener('timeupdate', handleTimeUpdate);
+  
+    const navWrap = document.getElementById('navWrap');
+    if (navWrap) {
+      navWrap.addEventListener('mousemove', e => {
+        const rect = navWrap.getBoundingClientRect();
+        navWrap.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
+        navWrap.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
+      });
+    }
+
+  </script>
+</body>
+</html>

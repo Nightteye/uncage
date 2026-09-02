@@ -750,7 +750,7 @@ await new Promise(r => setTimeout(r, 300));
     // CSP Analysis Report
     reportCSP(cspPolicies);
 
-    report('done', `Crawl complete: ${Object.keys(pages).length} page(s) captured`);
+    report('info', `Crawl complete: ${Object.keys(pages).length} page(s) captured`);
     return { pages, outputDir, originalHead, runtimeScripts };
 
 

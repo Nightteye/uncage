@@ -39,8 +39,9 @@ To use the package binary from another directory, install or link the package, t
 
 The UI is the easiest way to start:
 
-> [!NOTE]
-> The browser UI is still a work in progress. I plan to improve its design soon, but I have limited time to spend on the project right now. It is simple for the moment, and the focus has been on making the export process reliable.
+> [!CAUTION]
+> **No Web UI Contributions Accepted**
+> The design and functionality of the Web UI are considered final. Please do not submit issues, feature requests, or Pull Requests attempting to redesign, enhance, or alter the Web UI. We are strictly focusing on the core crawler and export pipeline. Any UI-focused PRs will be automatically closed.
 
 ```bash
 npm start
@@ -48,7 +49,7 @@ npm start
 # installed binary: uncage
 ```
 
-It opens `http://localhost:8787`, where you can enter a URL, choose an output folder, and monitor progress. Use `--port` to choose another UI port:
+It opens `http://localhost:8787`, where you can enter a URL, choose an output folder, and monitor progress. When a clone finishes, Uncage will automatically host a live preview of your static export on an available port in the `7000` series and provide a clickable link right in the UI. Use `--port` to choose another UI port:
 
 ```bash
 npm run uncage -- --ui --port 9000
@@ -98,6 +99,9 @@ By default, Uncage reads `robots.txt` before crawling. It applies `Uncage` rules
 It also discovers same-origin pages from `robots.txt` sitemap declarations and the common `/sitemap.xml` and `/sitemap_index.xml` locations. Sitemap URLs affect the crawl order only: `--max-pages` is always a hard cap. If `robots.txt` cannot be reached, Uncage logs a warning and continues without restrictions. Use `--ignore-robots` only when you have clear authorization.
 
 ## Preview and deploy an export
+
+> [!NOTE]
+> If you used the Web UI, your clone is automatically hosted on an available `7000` series port. You do not need to run manual preview commands unless you exported via the CLI.
 
 ```bash
 cd output/example-clone

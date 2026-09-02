@@ -1,70 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
-  <defs>
-    <!-- Background Gradient (Deep dark slate/black) -->
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#050505" />
-      <stop offset="100%" stop-color="#111111" />
-    </linearGradient>
-
-    <!-- Aggressive Neon Gradient -->
-    <linearGradient id="neon" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FF2A2A" />
-      <stop offset="50%" stop-color="#FF5E00" />
-      <stop offset="100%" stop-color="#FFC107" />
-    </linearGradient>
-
-    <!-- Shattered glow filter -->
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="12" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-    </filter>
-  </defs>
-
-  <!-- Dark Background -->
-  <rect width="512" height="512" rx="64" fill="url(#bg)" stroke="#222" stroke-width="4" />
-
-  <!-- Center Group -->
-  <g transform="translate(256, 256)">
-    <!-- Ambient back glow -->
-    <circle cx="0" cy="0" r="120" fill="#FF5E00" opacity="0.15" filter="blur(40px)" />
-
-    <!-- Shattered Outer Cage -->
-    <path d="M -130 -130 L 130 -130 L 130 -30 L 160 -40 L 160 50 L 130 40 L 130 130 L -130 130 L -130 60 L -170 70 L -170 -20 L -130 -10 Z" 
-          fill="none" 
-          stroke="#333" 
-          stroke-width="14" 
-          stroke-linejoin="miter" />
-
-    <path d="M -90 -170 L -60 -190" stroke="#FF5E00" stroke-width="8" stroke-linecap="round" filter="url(#glow)"/>
-    <path d="M 120 160 L 150 190" stroke="#FF5E00" stroke-width="8" stroke-linecap="round" filter="url(#glow)"/>
-
-    <!-- Sharp, Aggressive Code Brackets breaking out -->
-    <path d="M -30 -110 L -90 -50 L -90 50 L -30 110" 
-          fill="none" 
-          stroke="url(#neon)" 
-          stroke-width="24" 
-          stroke-linecap="square" 
-          stroke-linejoin="miter" 
-          filter="url(#glow)" />
-
-    <path d="M 30 -110 L 90 -50 L 90 50 L 30 110" 
-          fill="none" 
-          stroke="url(#neon)" 
-          stroke-width="24" 
-          stroke-linecap="square" 
-          stroke-linejoin="miter" 
-          filter="url(#glow)" />
-
-    <!-- Lightning / Forward Slash (The code execution) -->
-    <path d="M 20 -140 L -40 20 L 40 -20 L -20 140" 
-          fill="none" 
-          stroke="#FFFFFF" 
-          stroke-width="20" 
-          stroke-linecap="square" 
-          stroke-linejoin="miter"
-          filter="url(#glow)" />
-          
-    <circle cx="-10" cy="-60" r="8" fill="#FFC107" filter="url(#glow)"/>
-    <circle cx="10" cy="60" r="8" fill="#FFC107" filter="url(#glow)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="24" fill="#09090b"/>
+  <g fill="none" stroke="#ffffff" stroke-linejoin="round" stroke-linecap="round" transform="translate(50, 50) scale(1.6) translate(-12, -12)">
+    <path d="M12 2.5 L21 7.5 V16.5 L12 21.5 L3 16.5 V7.5 Z" stroke-width="2"/>
+    <path d="M11.5 7.5 L6.5 10.2 V13.8 L11.5 16.5" stroke-width="3"/>
   </g>
 </svg>
