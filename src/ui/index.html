@@ -209,47 +209,131 @@
     .export-btn:disabled { opacity: 0.3; cursor: not-allowed; }
     .panel-footer { margin-top: 16px; text-align: center; font-size: 12px; color: var(--text-muted); }
 
-    #progress {
-      display: none;
-      background: rgba(20,20,20,0.4);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
+    /* ── Multi-Instance Grid & Cards ── */
+    .instances-container {
+      width: 100%;
+      margin-top: 36px;
+      margin-bottom: 40px;
+      padding: 24px;
+      background: rgba(18, 18, 20, 0.65);
       border: 1px solid var(--border-card);
-      border-radius: 20px;
-      overflow: hidden;
-      margin-bottom: 24px;
+      border-radius: 24px;
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
     }
-    .term-bar {
-      display: flex; align-items: center; gap: 6px;
-      padding: 12px 18px;
-      background: rgba(0,0,0,0.5);
+    .instances-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px; padding-bottom: 12px;
       border-bottom: 1px solid var(--border);
     }
-    .dot { width: 10px; height: 10px; border-radius: 50%; }
-    .dot-r { background: #ff5f57; }
-    .dot-y { background: #febc2e; }
-    .dot-g { background: #28c840; }
-    .term-title { margin-left: 8px; font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
-    #events {
-      list-style: none; padding: 14px 18px; margin: 0;
-      display: flex; flex-direction: column; gap: 1px;
-      max-height: 320px; overflow-y: auto;
-      font-family: 'SF Mono','Cascadia Code','Fira Code','Consolas',monospace;
-      font-size: 12.5px; line-height: 1.85;
+    .instances-title {
+      display: flex; align-items: center; gap: 10px;
     }
-    #events li { color: var(--text-muted); }
-    #events li.ev-error { color: var(--red); }
-    #events li.ev-done { color: var(--green); }
+    .instances-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 10px rgba(16,185,129,0.8);
+      animation: pulse-green 2s infinite;
+    }
+    .instances-title h3 {
+      font-size: 15px; font-weight: 650; color: var(--white);
+      letter-spacing: -0.02em; margin: 0;
+    }
+    .instances-count {
+      font-size: 12px; font-weight: 600; color: var(--text-dim);
+      background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 100px;
+      border: 1px solid var(--border);
+    }
+    .instances-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+    @media (max-width: 768px) {
+      .instances-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .instance-card {
+      background: rgba(10, 10, 12, 0.75);
+      border: 1px solid var(--border-card);
+      border-radius: 18px;
+      padding: 16px;
+      display: flex; flex-direction: column;
+      gap: 12px;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+      position: relative;
+    }
+    .instance-card:hover {
+      border-color: rgba(255,255,255,0.22);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+    }
+    .instance-card.status-done {
+      border-color: rgba(16,185,129,0.35);
+    }
+    .instance-card.status-error {
+      border-color: rgba(239,68,68,0.35);
+    }
+    .instance-card-header {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+    }
+    .instance-info {
+      display: flex; flex-direction: column; gap: 3px; min-width: 0;
+    }
+    .instance-url {
+      font-size: 14px; font-weight: 600; color: var(--white);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .instance-folder {
+      font-size: 11.5px; color: var(--text-muted); font-family: monospace;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .instance-pill {
+      font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 100px;
+      text-transform: capitalize; flex-shrink: 0;
+    }
+    .instance-pill.queued { background: rgba(234,179,8,0.1); color: var(--warn); border: 1px solid rgba(234,179,8,0.3); }
+    .instance-pill.running { background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+    .instance-pill.done { background: rgba(16,185,129,0.1); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+    .instance-pill.error { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
 
-    #result {
-      display: none; padding: 18px 22px;
-      border-radius: 18px; margin-bottom: 24px;
-      font-size: 14px; line-height: 1.55;
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
+    .instance-terminal {
+      background: rgba(0,0,0,0.65);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin: 0;
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 11.5px; line-height: 1.6;
+      height: 96px;
+      overflow-y: auto;
+      display: flex; flex-direction: column; gap: 3px;
+      color: var(--text-muted);
     }
-    #result.success { background: rgba(45,212,99,0.1); border: 1px solid rgba(45,212,99,0.3); color: var(--green); }
-    #result.error { background: rgba(255,0,68,0.1); border: 1px solid rgba(255,0,68,0.3); color: var(--red); }
+    .instance-terminal li { list-style: none; word-break: break-all; }
+    .instance-terminal li.ev-done { color: var(--green); font-weight: 600; }
+    .instance-terminal li.ev-error { color: var(--red); font-weight: 600; }
+
+    .instance-footer {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      margin-top: auto; padding-top: 4px;
+    }
+    .instance-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 16px; border-radius: 100px;
+      background: #10b981; color: #000;
+      font-size: 12px; font-weight: 700; text-decoration: none;
+      box-shadow: 0 0 14px rgba(16,185,129,0.35);
+      transition: all 0.2s ease;
+    }
+    .instance-btn:hover {
+      box-shadow: 0 0 20px rgba(16,185,129,0.6);
+      transform: translateY(-1px);
+    }
+    .instance-meta {
+      font-size: 11px; color: var(--text-dim); font-family: monospace;
+    }
 
     .overlay {
       display: none; position: fixed; inset: 0; z-index: 100;
@@ -521,17 +605,16 @@
       <div class="panel-footer">Your files stay local. Review target-site permissions before cloning.</div>
     </section>
 
-    <div id="progress">
-      <div class="term-bar">
-        <span class="dot dot-r"></span>
-        <span class="dot dot-y"></span>
-        <span class="dot dot-g"></span>
-        <span class="term-title">Cloning…</span>
+    <section id="instancesContainer" class="instances-container" style="display: none;">
+      <div class="instances-header">
+        <div class="instances-title">
+          <span class="instances-dot"></span>
+          <h3>Active & Completed Instances</h3>
+        </div>
+        <span class="instances-count" id="instancesCount">0 instances</span>
       </div>
-      <ul id="events"></ul>
-    </div>
-
-    <div id="result"></div>
+      <div class="instances-grid" id="instancesGrid"></div>
+    </section>
 
     <footer class="site-footer">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" style="width: 36px; height: 36px; color: var(--white); margin-bottom: 12px;"><path d="M12 2.5 L21 7.5 V16.5 L12 21.5 L3 16.5 V7.5 Z" stroke-width="2"/><path d="M11.5 7.5 L6.5 10.2 V13.8 L11.5 16.5" stroke-width="3"/></svg>
@@ -592,9 +675,10 @@
     const urlInput = document.getElementById('url');
     const outInput = document.getElementById('outputName');
     const cloneBtn = document.getElementById('cloneBtn');
-    const progressEl = document.getElementById('progress');
-    const eventsEl = document.getElementById('events');
-    const resultEl = document.getElementById('result');
+    const instancesContainer = document.getElementById('instancesContainer');
+    const instancesGrid = document.getElementById('instancesGrid');
+    const instancesCount = document.getElementById('instancesCount');
+    let totalInstances = 0;
 
     urlInput.oninput = () => {
       if (!outInput.value) {
@@ -602,42 +686,153 @@
       }
     };
 
-    function addEvent(msg, kind) {
-      const li = document.createElement('li');
-      li.innerHTML = (kind==='error'?'✗ ':kind==='done'?'✓ ':'› ')+msg;
-      if (kind==='error') li.className='ev-error';
-      if (kind==='done') li.className='ev-done';
-      eventsEl.appendChild(li);
-      li.scrollIntoView({block:'end'});
+    function updateInstanceCount() {
+      instancesCount.textContent = `${totalInstances} instance${totalInstances === 1 ? '' : 's'}`;
     }
+
     function num(id){const v=document.getElementById(id).value;return v?Number(v):undefined;}
     function bool(id){return document.getElementById(id).checked;}
 
     async function doClone(){
-      const url=urlInput.value.trim(); if(!url) return;
-      const host=url.startsWith('http')?url:'https://'+url;
-      eventsEl.innerHTML=''; resultEl.style.display='none';
-      cloneBtn.disabled=true; cloneBtn.textContent='Cloning…';
-      progressEl.style.display='block';
+      const rawUrl = urlInput.value.trim();
+      if (!rawUrl) { urlInput.focus(); return; }
+      const host = rawUrl.startsWith('http') ? rawUrl : 'https://' + rawUrl;
+      const desiredOutput = outInput.value.trim() || undefined;
 
-      const body={url:host,outputName:outInput.value.trim()||undefined,headless:bool('headless'),safeMode:bool('safeMode'),respectRobots:bool('respectRobots'),priorityOnly:bool('priorityOnly'),skipDeps:bool('skipDeps'),keepAnalytics:bool('keepAnalytics'),noPurge:bool('noPurge'),maxPages:num('maxPages'),maxDepth:num('maxDepth'),timeout:num('timeout')};
+      const prevText = cloneBtn.textContent;
+      cloneBtn.disabled = true;
+      cloneBtn.textContent = 'Launching…';
+
+      const body = {
+        url: host,
+        outputName: desiredOutput,
+        headless: bool('headless'),
+        safeMode: bool('safeMode'),
+        respectRobots: bool('respectRobots'),
+        priorityOnly: bool('priorityOnly'),
+        skipDeps: bool('skipDeps'),
+        keepAnalytics: bool('keepAnalytics'),
+        noPurge: bool('noPurge'),
+        maxPages: num('maxPages'),
+        maxDepth: num('maxDepth'),
+        timeout: num('timeout')
+      };
 
       let resp;
-      try { resp=await fetch('/api/clone',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); }
-      catch{ addEvent('Could not reach the Uncage server','error'); reset(); return; }
+      try {
+        resp = await fetch('/api/clone', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+      } catch (err) {
+        alert('Could not reach Uncage server');
+        cloneBtn.disabled = false;
+        cloneBtn.textContent = prevText;
+        return;
+      }
 
-      if(!resp.ok){ const d=await resp.json().catch(()=>({})); addEvent(d.error||('HTTP '+resp.status),'error'); reset(); return; }
+      if (!resp.ok) {
+        const d = await resp.json().catch(() => ({}));
+        alert(d.error || ('HTTP ' + resp.status));
+        cloneBtn.disabled = false;
+        cloneBtn.textContent = prevText;
+        return;
+      }
 
-      const {jobId}=await resp.json();
-      const es=new EventSource(`/api/events?jobId=${jobId}`);
-      es.onmessage=e=>{ let ev; try{ev=JSON.parse(e.data)}catch{return} addEvent(ev.message,ev.kind);
-        if(ev.kind==='done'){es.close();finish('success','Clone complete! Run npm run preview inside the output folder.');}
-        if(ev.kind==='error'){es.close();finish('error',ev.message);}
+      const { jobId, outputName } = await resp.json();
+
+      // Reset form fields immediately so user can queue another clone
+      urlInput.value = '';
+      outInput.value = '';
+      cloneBtn.disabled = false;
+      cloneBtn.textContent = 'Instance Launched ✓';
+      setTimeout(() => { cloneBtn.textContent = 'Start Export'; }, 1500);
+
+      // Show 2x2 grid container
+      instancesContainer.style.display = 'block';
+      totalInstances++;
+      updateInstanceCount();
+
+      // Create instance card in the 2x2 grid
+      const card = document.createElement('div');
+      card.className = 'instance-card';
+      card.id = `card-${jobId}`;
+      card.innerHTML = `
+        <div class="instance-card-header">
+          <div class="instance-info">
+            <div class="instance-url" title="${host}">${host}</div>
+            <div class="instance-folder">output/${outputName}</div>
+          </div>
+          <span class="instance-pill queued" id="pill-${jobId}">Queued</span>
+        </div>
+        <ul class="instance-terminal" id="term-${jobId}">
+          <li>› Task queued in worker pool...</li>
+        </ul>
+        <div class="instance-footer" id="foot-${jobId}">
+          <span class="instance-meta" id="time-${jobId}">Started just now</span>
+        </div>
+      `;
+      instancesGrid.prepend(card);
+
+      const term = document.getElementById(`term-${jobId}`);
+      const pill = document.getElementById(`pill-${jobId}`);
+      const foot = document.getElementById(`foot-${jobId}`);
+
+      function addInstanceLog(msg, kind) {
+        const li = document.createElement('li');
+        li.innerHTML = (kind === 'error' ? '✗ ' : kind === 'done' ? '✓ ' : '› ') + msg;
+        if (kind === 'error') li.className = 'ev-error';
+        if (kind === 'done') li.className = 'ev-done';
+        term.appendChild(li);
+        term.scrollTop = term.scrollHeight;
+      }
+
+      // Connect SSE stream for this exact instance
+      const es = new EventSource(`/api/events?jobId=${jobId}`);
+      es.onmessage = e => {
+        let ev;
+        try { ev = JSON.parse(e.data); } catch { return; }
+        addInstanceLog(ev.message, ev.kind);
+
+        if (ev.kind === 'phase' && ev.message !== 'connected') {
+          pill.className = 'instance-pill running';
+          pill.textContent = 'Running';
+        }
+
+        if (ev.kind === 'done') {
+          es.close();
+          card.classList.add('status-done');
+          pill.className = 'instance-pill done';
+          pill.textContent = 'Done ✓';
+          if (ev.previewUrl) {
+            foot.innerHTML = `
+              <a href="${ev.previewUrl}" target="_blank" rel="noopener" class="instance-btn">
+                <span>Open Cloned Site</span> <span style="font-size: 13px;">↗</span>
+              </a>
+              <span class="instance-meta">${ev.previewUrl}</span>
+            `;
+          } else {
+            foot.innerHTML = `<span class="instance-meta">Saved to output/${outputName}</span>`;
+          }
+        }
+
+        if (ev.kind === 'error') {
+          es.close();
+          card.classList.add('status-error');
+          pill.className = 'instance-pill error';
+          pill.textContent = 'Failed ✗';
+          foot.innerHTML = `<span style="color: var(--red); font-size: 11px;">${ev.message || 'Export error'}</span>`;
+        }
       };
-      es.onerror=()=>{es.close();addEvent('Connection lost','error');reset();};
+
+      es.onerror = () => {
+        es.close();
+        if (!card.classList.contains('status-done') && !card.classList.contains('status-error')) {
+          addInstanceLog('Connection lost', 'error');
+        }
+      };
     }
-    function reset(){progressEl.style.display='none';cloneBtn.disabled=false;cloneBtn.textContent='Start Export';}
-    function finish(k,m){cloneBtn.disabled=false;cloneBtn.textContent='Start Export';resultEl.className=k==='success'?'success':'error';resultEl.innerHTML='<strong>'+(k==='success'?'✓ Done':'✗ Error')+'</strong><br/>'+m;resultEl.style.display='block';}
 
     cloneBtn.onclick=doClone;
     urlInput.onkeypress=e=>{if(e.key==='Enter')doClone();};

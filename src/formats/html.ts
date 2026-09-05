@@ -278,6 +278,30 @@ This folder is 100% static and ready to drag-and-drop to:
       }
     }
 
+    // 4.5. Generate unhashed module aliases for dynamic runtime ES imports across all hosts
+    try {
+      const mapPath = path.join(outputDir, 'asset-map.json');
+      const rawMap = await fs.readFile(mapPath, 'utf-8').catch(() => null);
+      if (rawMap) {
+        const assetMap = JSON.parse(rawMap) as Record<string, string>;
+        for (const [remoteUrl, localRelPath] of Object.entries(assetMap)) {
+          if (!localRelPath) continue;
+          try {
+            const parsedRemote = new URL(remoteUrl);
+            const originalBaseName = path.basename(parsedRemote.pathname);
+            const savedFileOnDisk = path.join(outputDir, localRelPath.replace(/^\//, ''));
+            const unhashedFileOnDisk = path.join(path.dirname(savedFileOnDisk), originalBaseName);
+            if (originalBaseName && savedFileOnDisk !== unhashedFileOnDisk) {
+              const stat = await fs.stat(savedFileOnDisk).catch(() => null);
+              if (stat && stat.isFile()) {
+                await fs.copyFile(savedFileOnDisk, unhashedFileOnDisk).catch(() => {});
+              }
+            }
+          } catch {}
+        }
+      }
+    } catch {}
+
     // 5. Clean up temporary captured-raw*.html files from output directory
     try {
       const files = await fs.readdir(outputDir);

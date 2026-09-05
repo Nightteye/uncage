@@ -5,6 +5,7 @@ export type ProgressEventKind = 'phase' | 'page' | 'asset' | 'warn' | 'info' | '
 export interface ProgressEvent {
   kind: ProgressEventKind;
   message: string;
+  previewUrl?: string | undefined;
 }
 
 export type ProgressHandler = (event: ProgressEvent) => void;

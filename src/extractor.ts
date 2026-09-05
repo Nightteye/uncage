@@ -965,12 +965,18 @@ async function rewriteJsFiles(outputDir: string, assetMap: AssetMap, baseOrigin:
       const jsAssetEntry = Object.entries(assetMap).find(([, local]) => local && path.basename(local) === file);
       const jsRemoteUrl = jsAssetEntry ? jsAssetEntry[0] : null;
 
-      // Rewrite hashed sibling relative imports
-      content = content.replace(/(["'])(?:\.\/|\.\.\/)([^"']+\.(?:mjs|js))(?:\?[^"']*)?\1/g, (match, quote, depName) => {
+      // Rewrite hashed sibling relative imports (supporting single, double, and backtick quotes)
+      content = content.replace(/(["'`])(?:\.\/|\.\.\/)([^"'`]+\.(?:mjs|js))(?:\?[^"'`]*)?\1/g, (match, quote, depName) => {
         try {
-          const remoteUrl = new URL(match.slice(1, -1), jsRemoteUrl || baseOrigin).href;
+          const specifier = match.slice(1, -1);
+          const remoteUrl = new URL(specifier, jsRemoteUrl || baseOrigin).href;
           if (assetMap[remoteUrl]) {
             const mappedName = path.basename(assetMap[remoteUrl]!);
+            return `${quote}./${mappedName}${quote}`;
+          }
+          const noQuery = remoteUrl.split('?')[0];
+          if (noQuery && assetMap[noQuery]) {
+            const mappedName = path.basename(assetMap[noQuery]!);
             return `${quote}./${mappedName}${quote}`;
           }
         } catch {}
@@ -1018,7 +1024,7 @@ async function downloadMissingDeps(
       const jsAssetEntry = Object.entries(assetMap).find(([, local]) => local && path.basename(local) === file);
       const importerRemoteUrl = jsAssetEntry ? jsAssetEntry[0] : null;
 
-      const importRegex = /(["'])(\.{1,2}\/[^"']+\.(?:mjs|js))(?:\?[^"']*)?\1/g;
+      const importRegex = /(["'`])(\.{1,2}\/[^"'`]+\.(?:mjs|js))(?:\?[^"'`]*)?\1/g;
       let match;
       while ((match = importRegex.exec(content)) !== null) {
         try {

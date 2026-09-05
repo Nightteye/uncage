@@ -22,16 +22,139 @@ export interface WebUIOptions {
   hostname?: string;
 }
 
+let nextPreviewPort = 7000;
+
+const PREVIEW_MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.mjs': 'application/javascript; charset=utf-8',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.wasm': 'application/wasm',
+};
+
+function startPreviewServer(dir: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const srv = http.createServer(async (req, res) => {
+      try {
+        const reqUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+        let pathname = decodeURIComponent(reqUrl.pathname);
+        if (pathname.endsWith('/')) pathname += 'index.html';
+
+        let filepath = path.join(dir, pathname);
+        const resolvedDir = path.resolve(dir);
+        if (!path.resolve(filepath).startsWith(resolvedDir)) {
+          res.writeHead(403);
+          return res.end('Forbidden');
+        }
+
+        let stat: any;
+        try {
+          stat = await fs.stat(filepath);
+          if (stat.isDirectory()) {
+            filepath = path.join(filepath, 'index.html');
+            stat = await fs.stat(filepath);
+          }
+        } catch {
+          // 1. Try appending .html for clean routes
+          try {
+            const htmlPath = filepath + '.html';
+            stat = await fs.stat(htmlPath);
+            filepath = htmlPath;
+          } catch {
+            // 2. Universal hashed module resolution:
+            // If requesting unhashed or mismatched module (e.g. foo.mjs), find foo-[hash].js/mjs
+            try {
+              const fileDir = path.dirname(filepath);
+              const { name } = path.parse(filepath);
+              const entries = await fs.readdir(fileDir);
+              const fuzzyMatch = entries.find(
+                (f) => f.startsWith(name + '-') || f.startsWith(name + '.')
+              );
+              if (fuzzyMatch) {
+                const candidate = path.join(fileDir, fuzzyMatch);
+                stat = await fs.stat(candidate);
+                filepath = candidate;
+              } else {
+                throw new Error('Not found');
+              }
+            } catch {
+              res.writeHead(404, { 'Content-Type': 'text/plain' });
+              return res.end('Not found');
+            }
+          }
+        }
+
+        const ext = path.extname(filepath).toLowerCase();
+        const contentType = PREVIEW_MIME_TYPES[ext] || 'application/octet-stream';
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Content-Length': stat.size,
+          'Access-Control-Allow-Origin': '*',
+        });
+        const stream = createReadStream(filepath);
+        stream.pipe(res);
+      } catch {
+        res.writeHead(500);
+        res.end('Internal Server Error');
+      }
+    });
+
+    function tryListen(port: number) {
+      if (port > 7099) return reject(new Error('No available ports in 7000-7099 range'));
+      srv.once('error', (err: any) => {
+        if (err.code === 'EADDRINUSE') {
+          tryListen(port + 1);
+        } else {
+          reject(err);
+        }
+      });
+      srv.listen(port, () => {
+        nextPreviewPort = port + 1;
+        resolve(port);
+      });
+    }
+
+    tryListen(nextPreviewPort);
+  });
+}
+
 interface Job {
   id: string;
-  status: 'idle' | 'running' | 'done' | 'error';
+  url: string;
+  outputName: string;
+  status: 'queued' | 'running' | 'done' | 'error';
   events: ProgressEvent[];
-  outputDir?: string;
-  error?: string;
+  outputDir?: string | undefined;
+  previewUrl?: string | undefined;
+  error?: string | undefined;
   subscribers: Array<(event: ProgressEvent) => void>;
 }
 
-let activeJob: Job | null = null;
+const jobs = new Map<string, Job>();
+const MAX_CONCURRENT_JOBS = 3;
+let runningJobsCount = 0;
+const jobQueue: Array<() => void> = [];
+
+function processNextQueueItem(): void {
+  if (runningJobsCount >= MAX_CONCURRENT_JOBS || jobQueue.length === 0) return;
+  const next = jobQueue.shift();
+  if (next) {
+    runningJobsCount++;
+    next();
+  }
+}
 
 function emit(job: Job, event: ProgressEvent): void {
   job.events.push(event);
@@ -185,18 +308,41 @@ export function startWebUI({ port = 8787, hostname = 'localhost' }: WebUIOptions
       return;
     }
 
-    // GET /api/status → current job state
+    // GET /api/status → current job state or list of all jobs
     if (req.method === 'GET' && pathname === '/api/status') {
-      sendJSON(200, activeJob || { status: 'idle' });
+      const jobId = url.searchParams.get('jobId');
+      if (jobId) {
+        const job = jobs.get(jobId);
+        if (!job) {
+          sendJSON(404, { error: 'Job not found' });
+          return;
+        }
+        sendJSON(200, {
+          id: job.id,
+          url: job.url,
+          outputName: job.outputName,
+          status: job.status,
+          outputDir: job.outputDir,
+          previewUrl: job.previewUrl,
+          error: job.error,
+        });
+        return;
+      }
+      const allJobs = Array.from(jobs.values()).map((j) => ({
+        id: j.id,
+        url: j.url,
+        outputName: j.outputName,
+        status: j.status,
+        outputDir: j.outputDir,
+        previewUrl: j.previewUrl,
+        error: j.error,
+      }));
+      sendJSON(200, allJobs);
       return;
     }
 
-    // POST /api/clone → start a clone job
+    // POST /api/clone → start or queue a clone job
     if (req.method === 'POST' && pathname === '/api/clone') {
-      if (activeJob && activeJob.status === 'running') {
-        sendJSON(409, { error: 'A clone job is already running' });
-        return;
-      }
       let rawBody = '';
       req.on('data', (chunk) => {
         rawBody += chunk;
@@ -216,14 +362,14 @@ export function startWebUI({ port = 8787, hostname = 'localhost' }: WebUIOptions
           return;
         }
 
-        const url = typeof body?.url === 'string' ? body.url : '';
-        if (!url.trim()) {
+        const urlInput = typeof body?.url === 'string' ? body.url : '';
+        if (!urlInput.trim()) {
           sendJSON(400, { error: 'Missing "url" field' });
           return;
         }
 
         // Normalize scheme like the CLI
-        let target = url.trim();
+        let target = urlInput.trim();
         if (!target.startsWith('http://') && !target.startsWith('https://')) target = `https://${target}`;
         let outputName = typeof body.outputName === 'string' ? body.outputName : '';
         try {
@@ -236,6 +382,18 @@ export function startWebUI({ port = 8787, hostname = 'localhost' }: WebUIOptions
         }
         outputName = sanitizeFileName(outputName) || 'cloned-site';
 
+        // Deduplicate outputName if a job is already using this output folder name
+        let finalOutputName = outputName;
+        let suffix = 2;
+        const inUseOutputNames = new Set(
+          Array.from(jobs.values())
+            .filter((j) => j.status === 'running' || j.status === 'queued')
+            .map((j) => j.outputName)
+        );
+        while (inUseOutputNames.has(finalOutputName)) {
+          finalOutputName = `${outputName}-${suffix++}`;
+        }
+
         let opts: ExtractorOptions & { purge?: boolean; keepAnalytics?: boolean };
         try {
           opts = parseCloneOptions(body);
@@ -244,44 +402,86 @@ export function startWebUI({ port = 8787, hostname = 'localhost' }: WebUIOptions
           return;
         }
 
-        const jobId = `${Date.now()}`;
+        const jobId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         const job: Job = {
           id: jobId,
-          status: 'running',
+          url: target,
+          outputName: finalOutputName,
+          status: 'queued',
           events: [],
           subscribers: [],
         };
-        activeJob = job;
+        jobs.set(jobId, job);
 
-        sendJSON(202, { jobId });
+        sendJSON(202, { jobId, outputName: finalOutputName });
 
-        void cloneToStaticHtml(target, outputName, opts, (event) => {
-          emit(job, event);
-        })
-          .then((result) => {
-            job.outputDir = result.outputDir;
-            job.status = 'done';
-            emit(job, { kind: 'done', message: `Done! Output at ${result.outputDir}` });
+        const executeJob = () => {
+          job.status = 'running';
+          emit(job, { kind: 'phase', message: `Starting export for ${target}` });
+
+          void cloneToStaticHtml(target, finalOutputName, opts, (event) => {
+            emit(job, event);
           })
-          .catch((err: any) => {
-            job.status = 'error';
-            job.error = err instanceof Error ? err.message : String(err);
-            emit(job, {
-              kind: 'error',
-              message: err instanceof Error ? err.message : String(err),
+            .then(async (result) => {
+              job.outputDir = result.outputDir;
+              job.status = 'done';
+              let previewUrl = '';
+              try {
+                const port = await startPreviewServer(result.outputDir);
+                previewUrl = `http://localhost:${port}`;
+                job.previewUrl = previewUrl;
+              } catch (err: any) {
+                console.error(`  ⚠️ Could not start preview server: ${err.message}`);
+              }
+
+              emit(job, {
+                kind: 'done',
+                message: previewUrl
+                  ? `Clone complete! Preview running at ${previewUrl}`
+                  : `Done! Output at ${result.outputDir}`,
+                previewUrl: previewUrl || undefined,
+              });
+
+              console.log(`\n  ✅ [Web UI] Export complete for ${target}!`);
+              console.log(`  📁 Files saved to: ${result.outputDir}`);
+              if (previewUrl) {
+                console.log(`  🌐 Live preview: ${previewUrl}`);
+              }
+              console.log(`  🚀 Manual preview: cd output/${finalOutputName} && npm run preview\n`);
+            })
+            .catch((err: any) => {
+              job.status = 'error';
+              job.error = err instanceof Error ? err.message : String(err);
+              emit(job, {
+                kind: 'error',
+                message: err instanceof Error ? err.message : String(err),
+              });
+              console.error(`\n  ❌ [Web UI] Export failed for ${target}: ${job.error}\n`);
+            })
+            .finally(() => {
+              runningJobsCount--;
+              processNextQueueItem();
             });
-          });
+        };
+
+        if (runningJobsCount < MAX_CONCURRENT_JOBS) {
+          runningJobsCount++;
+          executeJob();
+        } else {
+          jobQueue.push(executeJob);
+          emit(job, { kind: 'phase', message: 'Job queued — waiting for an available worker slot' });
+        }
       });
       return;
     }
 
-    // GET /api/events?jobId= → SSE stream
+    // GET /api/events?jobId= → SSE stream for specific job
     if (req.method === 'GET' && pathname === '/api/events') {
-      const jobId = url.searchParams.get('jobId') || activeJob?.id;
-      const job = jobId === activeJob?.id ? activeJob : null;
+      const jobId = url.searchParams.get('jobId');
+      const job = jobId ? jobs.get(jobId) : null;
       if (!job) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'No active job with that id' }));
+        res.end(JSON.stringify({ error: 'No job with that id' }));
         return;
       }
 
