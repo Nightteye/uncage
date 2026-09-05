@@ -331,6 +331,17 @@
       box-shadow: 0 0 20px rgba(16,185,129,0.6);
       transform: translateY(-1px);
     }
+    .instance-btn-zip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 14px; border-radius: 100px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+      color: var(--white); font-size: 12px; font-weight: 600; text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .instance-btn-zip:hover {
+      background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.35);
+      box-shadow: 0 0 14px rgba(255,255,255,0.18); transform: translateY(-1px);
+    }
     .instance-meta {
       font-size: 11px; color: var(--text-dim); font-family: monospace;
     }
@@ -749,35 +760,65 @@
       cloneBtn.textContent = 'Instance Launched ✓';
       setTimeout(() => { cloneBtn.textContent = 'Start Export'; }, 1500);
 
-      // Show 2x2 grid container
+      createInstanceCard({
+        id: jobId,
+        url: host,
+        outputName,
+        status: 'queued',
+        events: []
+      });
+    }
+
+    function createInstanceCard(job) {
+      if (document.getElementById(`card-${job.id}`)) return;
+
       instancesContainer.style.display = 'block';
       totalInstances++;
       updateInstanceCount();
 
-      // Create instance card in the 2x2 grid
+      let host = job.url || '';
+      try {
+        if (host) host = new URL(host.startsWith('http') ? host : 'https://' + host).hostname;
+      } catch {
+        host = job.outputName || 'Site';
+      }
+      if (!host) host = job.outputName || 'Site';
+
       const card = document.createElement('div');
       card.className = 'instance-card';
-      card.id = `card-${jobId}`;
+      card.id = `card-${job.id}`;
+
+      let pillClass = 'queued';
+      let pillText = 'Queued';
+      if (job.status === 'done') {
+        pillClass = 'done';
+        pillText = 'Done ✓';
+        card.classList.add('status-done');
+      } else if (job.status === 'error') {
+        pillClass = 'error';
+        pillText = 'Failed ✗';
+        card.classList.add('status-error');
+      } else if (job.status === 'running') {
+        pillClass = 'running';
+        pillText = 'Running';
+      }
+
       card.innerHTML = `
         <div class="instance-card-header">
           <div class="instance-info">
             <div class="instance-url" title="${host}">${host}</div>
-            <div class="instance-folder">output/${outputName}</div>
+            <div class="instance-folder">output/${job.outputName}</div>
           </div>
-          <span class="instance-pill queued" id="pill-${jobId}">Queued</span>
+          <span class="instance-pill ${pillClass}" id="pill-${job.id}">${pillText}</span>
         </div>
-        <ul class="instance-terminal" id="term-${jobId}">
-          <li>› Task queued in worker pool...</li>
-        </ul>
-        <div class="instance-footer" id="foot-${jobId}">
-          <span class="instance-meta" id="time-${jobId}">Started just now</span>
-        </div>
+        <ul class="instance-terminal" id="term-${job.id}"></ul>
+        <div class="instance-footer" id="foot-${job.id}"></div>
       `;
       instancesGrid.prepend(card);
 
-      const term = document.getElementById(`term-${jobId}`);
-      const pill = document.getElementById(`pill-${jobId}`);
-      const foot = document.getElementById(`foot-${jobId}`);
+      const term = document.getElementById(`term-${job.id}`);
+      const pill = document.getElementById(`pill-${job.id}`);
+      const foot = document.getElementById(`foot-${job.id}`);
 
       function addInstanceLog(msg, kind) {
         const li = document.createElement('li');
@@ -788,8 +829,63 @@
         term.scrollTop = term.scrollHeight;
       }
 
-      // Connect SSE stream for this exact instance
-      const es = new EventSource(`/api/events?jobId=${jobId}`);
+      function renderDoneFooter(previewUrl) {
+        card.classList.add('status-done');
+        card.classList.remove('status-error');
+        pill.className = 'instance-pill done';
+        pill.textContent = 'Done ✓';
+        const previewBtn = previewUrl ? `
+          <a href="${previewUrl}" target="_blank" rel="noopener" class="instance-btn">
+            <span>Preview</span> <span style="font-size: 13px;">↗</span>
+          </a>
+        ` : '';
+        foot.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 8px;">
+            ${previewBtn}
+            <a href="/api/download?jobId=${job.id}" download class="instance-btn-zip" title="Download ZIP">
+              <span>.ZIP</span>
+            </a>
+          </div>
+          <span class="instance-meta">${previewUrl || 'output/' + job.outputName}</span>
+        `;
+      }
+
+      function renderErrorFooter(errMsg) {
+        card.classList.add('status-error');
+        card.classList.remove('status-done');
+        pill.className = 'instance-pill error';
+        pill.textContent = 'Failed ✗';
+        foot.innerHTML = `<span style="color: var(--red); font-size: 11px;">${errMsg || 'Export error'}</span>`;
+      }
+
+      if (Array.isArray(job.events) && job.events.length > 0) {
+        for (const ev of job.events) {
+          addInstanceLog(ev.message, ev.kind);
+        }
+      }
+
+      if (job.status === 'done') {
+        if (!job.events || job.events.length === 0) {
+          addInstanceLog('Export completed successfully', 'done');
+        }
+        renderDoneFooter(job.previewUrl);
+        return;
+      }
+
+      if (job.status === 'error') {
+        if (!job.events || job.events.length === 0) {
+          addInstanceLog(job.error || 'Export failed', 'error');
+        }
+        renderErrorFooter(job.error);
+        return;
+      }
+
+      foot.innerHTML = `<span class="instance-meta" id="time-${job.id}">Started just now</span>`;
+      if (!job.events || job.events.length === 0) {
+        addInstanceLog('Task queued in worker pool...', 'info');
+      }
+
+      const es = new EventSource(`/api/events?jobId=${job.id}`);
       es.onmessage = e => {
         let ev;
         try { ev = JSON.parse(e.data); } catch { return; }
@@ -802,27 +898,12 @@
 
         if (ev.kind === 'done') {
           es.close();
-          card.classList.add('status-done');
-          pill.className = 'instance-pill done';
-          pill.textContent = 'Done ✓';
-          if (ev.previewUrl) {
-            foot.innerHTML = `
-              <a href="${ev.previewUrl}" target="_blank" rel="noopener" class="instance-btn">
-                <span>Open Cloned Site</span> <span style="font-size: 13px;">↗</span>
-              </a>
-              <span class="instance-meta">${ev.previewUrl}</span>
-            `;
-          } else {
-            foot.innerHTML = `<span class="instance-meta">Saved to output/${outputName}</span>`;
-          }
+          renderDoneFooter(ev.previewUrl || job.previewUrl);
         }
 
         if (ev.kind === 'error') {
           es.close();
-          card.classList.add('status-error');
-          pill.className = 'instance-pill error';
-          pill.textContent = 'Failed ✗';
-          foot.innerHTML = `<span style="color: var(--red); font-size: 11px;">${ev.message || 'Export error'}</span>`;
+          renderErrorFooter(ev.message || 'Export error');
         }
       };
 
@@ -833,6 +914,24 @@
         }
       };
     }
+
+    async function syncInstances() {
+      try {
+        const resp = await fetch('/api/status');
+        if (!resp.ok) return;
+        const list = await resp.json();
+        if (Array.isArray(list)) {
+          for (const job of list) {
+            createInstanceCard(job);
+          }
+        }
+      } catch {
+        /* best-effort sync on load */
+      }
+    }
+
+    syncInstances();
+    window.addEventListener('focus', syncInstances);
 
     cloneBtn.onclick=doClone;
     urlInput.onkeypress=e=>{if(e.key==='Enter')doClone();};

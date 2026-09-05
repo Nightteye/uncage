@@ -4,6 +4,7 @@ import { createReadStream } from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
+import { ZipArchive } from 'archiver';
 import type { ProgressEvent, ExtractorOptions } from './types.js';
 import { cloneToStaticHtml } from './pipeline.js';
 import { sanitizeFileName } from './constants.js';
@@ -143,6 +144,107 @@ interface Job {
 }
 
 const jobs = new Map<string, Job>();
+const JOBS_STORAGE_FILE = path.join(process.cwd(), 'output', '.jobs.json');
+
+async function saveJobsToDisk(): Promise<void> {
+  try {
+    const dir = path.join(process.cwd(), 'output');
+    await fs.mkdir(dir, { recursive: true });
+    const serializable = Array.from(jobs.values()).map((j) => ({
+      id: j.id,
+      url: j.url,
+      outputName: j.outputName,
+      status: j.status === 'running' || j.status === 'queued' ? 'error' : j.status,
+      outputDir: j.outputDir,
+      previewUrl: j.previewUrl,
+      error: j.status === 'running' || j.status === 'queued' ? 'Interrupted by server restart' : j.error,
+      events: j.events.slice(-30),
+    }));
+    await fs.writeFile(JOBS_STORAGE_FILE, JSON.stringify(serializable, null, 2), 'utf-8');
+  } catch {
+    /* non-blocking best-effort */
+  }
+}
+
+async function loadJobsFromDisk(): Promise<void> {
+  try {
+    const raw = await fs.readFile(JOBS_STORAGE_FILE, 'utf-8');
+    const list = JSON.parse(raw);
+    if (Array.isArray(list)) {
+      for (const item of list) {
+        if (!item.id || !item.url) continue;
+        let previewUrl: string | undefined = item.previewUrl || undefined;
+        if (item.status === 'done' && item.outputDir) {
+          try {
+            const st = await fs.stat(item.outputDir);
+            if (st.isDirectory()) {
+              const port = await startPreviewServer(item.outputDir);
+              previewUrl = `http://localhost:${port}`;
+            } else {
+              continue;
+            }
+          } catch {
+            continue;
+          }
+        }
+        const job: Job = {
+          id: item.id,
+          url: item.url,
+          outputName: item.outputName || 'cloned-site',
+          status: item.status,
+          events: Array.isArray(item.events) ? item.events : [],
+          outputDir: item.outputDir || undefined,
+          previewUrl,
+          error: item.error || undefined,
+          subscribers: [],
+        };
+        jobs.set(job.id, job);
+      }
+    }
+  } catch {
+    /* file may not exist yet */
+  }
+
+  try {
+    const baseOutputDir = path.join(process.cwd(), 'output');
+    const entries = await fs.readdir(baseOutputDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory() && !entry.name.startsWith('.')) {
+        const folderPath = path.join(baseOutputDir, entry.name);
+        const existing = Array.from(jobs.values()).find((j) => j.outputName === entry.name);
+        if (!existing) {
+          try {
+            await fs.stat(path.join(folderPath, 'index.html'));
+            const port = await startPreviewServer(folderPath);
+            const restoredId = `restored-${entry.name}`;
+            const restoredJob: Job = {
+              id: restoredId,
+              url: `https://${entry.name}`,
+              outputName: entry.name,
+              status: 'done',
+              outputDir: folderPath,
+              previewUrl: `http://localhost:${port}`,
+              events: [
+                {
+                  kind: 'done',
+                  message: `Export restored! Preview running at http://localhost:${port}`,
+                  previewUrl: `http://localhost:${port}`,
+                },
+              ],
+              subscribers: [],
+            };
+            jobs.set(restoredId, restoredJob);
+          } catch {
+            /* no index.html */
+          }
+        }
+      }
+    }
+  } catch {
+    /* output dir may not exist yet */
+  }
+}
+
 const MAX_CONCURRENT_JOBS = 3;
 let runningJobsCount = 0;
 const jobQueue: Array<() => void> = [];
@@ -218,8 +320,9 @@ export function parseCloneOptions(body: unknown): ExtractorOptions & { purge?: b
   return opts;
 }
 
-export function startWebUI({ port = 8787, hostname = 'localhost' }: WebUIOptions = {}): void {
-  const server = http.createServer((req, res) => {
+export async function startWebUI({ port = 8787, hostname = 'localhost' }: WebUIOptions = {}): Promise<void> {
+  await loadJobsFromDisk();
+  const server = http.createServer(async (req, res) => {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     const pathname = url.pathname;
 
@@ -325,6 +428,7 @@ export function startWebUI({ port = 8787, hostname = 'localhost' }: WebUIOptions
           outputDir: job.outputDir,
           previewUrl: job.previewUrl,
           error: job.error,
+          events: job.events.slice(-20),
         });
         return;
       }
@@ -336,8 +440,68 @@ export function startWebUI({ port = 8787, hostname = 'localhost' }: WebUIOptions
         outputDir: j.outputDir,
         previewUrl: j.previewUrl,
         error: j.error,
+        events: j.events.slice(-20),
       }));
       sendJSON(200, allJobs);
+      return;
+    }
+
+    // GET /api/download?jobId=... or ?folder=... → stream zip archive of cloned site
+    if (req.method === 'GET' && pathname === '/api/download') {
+      const jobId = url.searchParams.get('jobId');
+      const folderParam = url.searchParams.get('folder');
+      let targetDir = '';
+      let zipName = 'exported-site.zip';
+
+      if (jobId && jobs.has(jobId)) {
+        const job = jobs.get(jobId)!;
+        if (job.outputDir) {
+          targetDir = job.outputDir;
+          zipName = `${job.outputName || 'exported-site'}.zip`;
+        }
+      } else if (folderParam) {
+        const safeFolder = sanitizeFileName(folderParam);
+        const resolved = path.join(process.cwd(), 'output', safeFolder);
+        const baseOutputDir = path.join(process.cwd(), 'output');
+        if (path.resolve(resolved).startsWith(path.resolve(baseOutputDir))) {
+          targetDir = resolved;
+          zipName = `${safeFolder}.zip`;
+        }
+      }
+
+      if (!targetDir) {
+        sendJSON(400, { error: 'Valid "jobId" or "folder" required' });
+        return;
+      }
+
+      try {
+        const stat = await fs.stat(targetDir);
+        if (!stat.isDirectory()) {
+          sendJSON(404, { error: 'Folder not found' });
+          return;
+        }
+
+        res.writeHead(200, {
+          'Content-Type': 'application/zip',
+          'Content-Disposition': `attachment; filename="${zipName}"`,
+        });
+
+        const archive = new ZipArchive({
+          zlib: { level: 6 },
+        });
+
+        archive.on('error', (err: Error) => {
+          console.error(`  ⚠️ Archive streaming error: ${err.message}`);
+          if (!res.headersSent) res.writeHead(500);
+          res.end();
+        });
+
+        archive.pipe(res);
+        archive.directory(targetDir, false);
+        await archive.finalize();
+      } catch {
+        sendJSON(404, { error: 'Output folder not found on disk' });
+      }
       return;
     }
 
@@ -412,11 +576,13 @@ export function startWebUI({ port = 8787, hostname = 'localhost' }: WebUIOptions
           subscribers: [],
         };
         jobs.set(jobId, job);
+        void saveJobsToDisk();
 
         sendJSON(202, { jobId, outputName: finalOutputName });
 
         const executeJob = () => {
           job.status = 'running';
+          void saveJobsToDisk();
           emit(job, { kind: 'phase', message: `Starting export for ${target}` });
 
           void cloneToStaticHtml(target, finalOutputName, opts, (event) => {
@@ -441,6 +607,7 @@ export function startWebUI({ port = 8787, hostname = 'localhost' }: WebUIOptions
                   : `Done! Output at ${result.outputDir}`,
                 previewUrl: previewUrl || undefined,
               });
+              void saveJobsToDisk();
 
               console.log(`\n  ✅ [Web UI] Export complete for ${target}!`);
               console.log(`  📁 Files saved to: ${result.outputDir}`);
@@ -456,6 +623,7 @@ export function startWebUI({ port = 8787, hostname = 'localhost' }: WebUIOptions
                 kind: 'error',
                 message: err instanceof Error ? err.message : String(err),
               });
+              void saveJobsToDisk();
               console.error(`\n  ❌ [Web UI] Export failed for ${target}: ${job.error}\n`);
             })
             .finally(() => {

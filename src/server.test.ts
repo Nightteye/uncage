@@ -40,4 +40,18 @@ describe('web UI crawl controls', () => {
     expect(html).toContain('paused indefinitely');
     expect(html).toContain('pull requests are welcome');
   });
+
+  it('renders download ZIP button for completed exports', async () => {
+    const html = await fs.readFile(new URL('./ui/index.html', import.meta.url), 'utf-8');
+    expect(html).toContain('instance-btn-zip');
+    expect(html).toContain('/api/download?jobId=');
+    expect(html).toContain('>.ZIP<');
+  });
+
+  it('synchronizes and restores instances across page reloads and tab switches', async () => {
+    const html = await fs.readFile(new URL('./ui/index.html', import.meta.url), 'utf-8');
+    expect(html).toContain('syncInstances()');
+    expect(html).toContain("fetch('/api/status')");
+    expect(html).toContain("window.addEventListener('focus', syncInstances)");
+  });
 });

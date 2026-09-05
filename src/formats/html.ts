@@ -262,14 +262,17 @@ This folder is 100% static and ready to drag-and-drop to:
       const stat = await fs.stat(publicAssetsDir).catch(() => null);
       if (stat && stat.isDirectory()) {
         await fs.cp(publicAssetsDir, rootAssetsDir, { recursive: true, force: true });
-        // Remove only what we manage under public/ rather than the whole directory,
-        // in case other tooling ever places files there
+        // Remove public/ staging folder with retries for Windows file lock delays
         const publicDir = path.join(outputDir, 'public');
-        const entries = await fs.readdir(publicDir).catch(() => [] as string[]);
-        for (const entry of entries) {
-          await fs.rm(path.join(publicDir, entry), { recursive: true, force: true }).catch(() => {});
+        try {
+          await fs.rm(publicDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+        } catch {
+          const entries = await fs.readdir(publicDir).catch(() => [] as string[]);
+          for (const entry of entries) {
+            await fs.rm(path.join(publicDir, entry), { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }).catch(() => {});
+          }
+          await fs.rmdir(publicDir).catch(() => {});
         }
-        await fs.rmdir(publicDir).catch(() => {});
         console.log('  [Assembler] Consolidated assets to root directory for static hosting');
       }
     } catch (e: any) {
