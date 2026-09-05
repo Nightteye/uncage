@@ -4,6 +4,12 @@
 
 # Uncage
 
+<p align="center">
+  <a href="https://github.com/Nightteye/uncage/stargazers"><img src="https://img.shields.io/github/stars/Nightteye/uncage?style=flat&color=yellow" alt="GitHub Stars"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-%3E%3D18.0.0-green.svg" alt="Node.js"></a>
+</p>
+
 Uncage is a local website cloner that captures a rendered site and exports a standalone static HTML, CSS, and JavaScript bundle. It includes a browser UI for simple use and a CLI for repeatable exports.
 
 > [!IMPORTANT]

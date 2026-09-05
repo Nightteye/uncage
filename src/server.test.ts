@@ -24,20 +24,20 @@ describe('web UI clone option validation', () => {
 
 describe('web UI crawl controls', () => {
   it('renders and submits max depth, robots, and priority-only controls', async () => {
-    const html = await fs.readFile(new URL('./ui.html', import.meta.url), 'utf-8');
+    const html = await fs.readFile(new URL('./ui/index.html', import.meta.url), 'utf-8');
     expect(html).toContain('id="maxDepth"');
     expect(html).toContain('id="respectRobots"');
     expect(html).toContain('id="priorityOnly"');
-    expect(html).toContain('maxDepth: num(\'maxDepth\')');
-    expect(html).toContain('respectRobots: bool(\'respectRobots\')');
-    expect(html).toContain('priorityOnly: bool(\'priorityOnly\')');
+    expect(html).toContain("num('maxDepth')");
+    expect(html).toContain("bool('respectRobots')");
+    expect(html).toContain("bool('priorityOnly')");
     expect(html).toContain('href="/react-cloner-status"');
   });
 
   it('includes a clear React cloner status page for contributors', async () => {
-    const html = await fs.readFile(new URL('./react-cloner-status.html', import.meta.url), 'utf-8');
-    expect(html).toContain('The React cloner is');
+    const html = await fs.readFile(new URL('./ui/react-cloner-status.html', import.meta.url), 'utf-8');
+    expect(html).toContain('The React TSX/JSX cloner is');
     expect(html).toContain('paused indefinitely');
-    expect(html).toContain('open a pull request');
+    expect(html).toContain('pull requests are welcome');
   });
 });

@@ -1,5 +1,6 @@
 import http from 'http';
 import fs from 'fs/promises';
+import { createReadStream } from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';

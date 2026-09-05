@@ -131,7 +131,8 @@ program
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       console.log(`\n  ✅ Successfully exported in ${elapsed}s!`);
       console.log(`  🚀 Run static preview: cd output/${displayOutputName} && npm run preview`);
-      console.log(`  📁 Or open output/${displayOutputName}/index.html directly in your browser.\n`);
+      console.log(`  📁 Or open output/${displayOutputName}/index.html directly in your browser.`);
+      console.log(`  ⭐ Star us on GitHub: https://github.com/Nightteye/uncage\n`);
     } catch (err: any) {
       if (err.name === 'ExitPromptError' || err.message?.includes('force closed')) {
         console.log('\n  👋 Operation cancelled. Exiting...\n');

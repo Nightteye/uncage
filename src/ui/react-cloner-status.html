@@ -256,6 +256,19 @@
     }
     .nav-brand { font-size: 15px; font-weight: 600; color: var(--white); letter-spacing: -0.03em; text-decoration: none; display: flex; align-items: center; gap: 8px;}
     .nav-actions { display: flex; align-items: center; gap: 8px; }
+    .nav-star {
+      display: inline-flex; align-items: center; gap: 5px; height: 36px; padding: 0 14px;
+      background: linear-gradient(135deg, rgba(234,179,8,0.15), rgba(245,158,11,0.06));
+      border: 1px solid rgba(234,179,8,0.4); border-radius: 100px;
+      font-size: 13px; font-weight: 600; color: #facc15; text-decoration: none;
+      transition: all 0.2s ease; box-shadow: 0 0 12px rgba(234,179,8,0.15);
+    }
+    .nav-star:hover {
+      background: linear-gradient(135deg, rgba(234,179,8,0.25), rgba(245,158,11,0.15));
+      border-color: rgba(234,179,8,0.7); color: #fef08a;
+      box-shadow: 0 0 18px rgba(234,179,8,0.35); transform: translateY(-1px);
+    }
+
     
     .nav-guide {
       display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 16px;
@@ -308,6 +321,7 @@
     <nav class="nav">
       <a href="/" class="nav-brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" style="width: 20px; height: 20px; color: var(--white);"><path d="M12 2.5 L21 7.5 V16.5 L12 21.5 L3 16.5 V7.5 Z" stroke-width="2"/><path d="M11.5 7.5 L6.5 10.2 V13.8 L11.5 16.5" stroke-width="3"/></svg> Uncage</a>
       <div class="nav-actions">
+        <a href="https://github.com/Nightteye/uncage" target="_blank" rel="noopener" class="nav-star">⭐ Star</a>
         <a href="/react-cloner-status" class="nav-guide warn">React Paused</a>
         <button class="nav-guide" id="guideBtn" onclick="const o = document.getElementById('guideOverlay'); if(o) o.classList.add('open');">? Guide</button>
         <div class="nav-badge">Runs locally</div>

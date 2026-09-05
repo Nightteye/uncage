@@ -200,7 +200,7 @@ export async function extract(
 
   // Live progress callback (used by the web UI); console.log stays for the CLI.
   const onProgress = options.onProgress;
-  const report = (kind: 'phase' | 'page' | 'asset' | 'warn' | 'done' | 'error', message: string): void => {
+  const report = (kind: 'phase' | 'page' | 'asset' | 'warn' | 'info' | 'done' | 'error', message: string): void => {
     try { onProgress?.({ kind, message }); } catch { /* listener must never break the crawl */ }
   };
   const assetsDir = path.join(outputDir, 'public', 'assets');

@@ -1,6 +1,6 @@
 export type ExportFormat = 'react-ts' | 'react-js' | 'html';
 
-export type ProgressEventKind = 'phase' | 'page' | 'asset' | 'warn' | 'done' | 'error';
+export type ProgressEventKind = 'phase' | 'page' | 'asset' | 'warn' | 'info' | 'done' | 'error';
 
 export interface ProgressEvent {
   kind: ProgressEventKind;
