@@ -1,15 +1,24 @@
 #!/usr/bin/env node
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import path from 'path';
 import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const tsxCli = path.resolve(__dirname, '../node_modules/tsx/dist/cli.mjs');
 const entryTs = path.resolve(__dirname, '../src/index.ts');
 
+let tsxCli = '';
+try {
+  const req = createRequire(import.meta.url);
+  const tsxPkg = req.resolve('tsx/package.json');
+  tsxCli = path.join(path.dirname(tsxPkg), 'dist/cli.mjs');
+} catch {
+  tsxCli = path.resolve(__dirname, '../node_modules/tsx/dist/cli.mjs');
+}
+
 if (!fs.existsSync(tsxCli)) {
-  console.error('  ❌ tsx not found. Run `npm install` in the uncage project first.');
+  console.error('  ❌ tsx not found. Please ensure dependencies are installed.');
   process.exit(1);
 }
 

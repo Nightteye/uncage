@@ -1,0 +1,6 @@
+**/*.test.ts
+**/*.test.js
+.github/
+output/
+wiki/
+docs/

@@ -1,11 +1,18 @@
 {
-  "name": "uncage",
-  "version": "1.0.0",
+  "name": "@nightteye/uncage",
+  "version": "1.0.1",
   "description": "Local website cloner that exports standalone static HTML, CSS, and JavaScript.",
   "main": "src/index.ts",
   "bin": {
-    "uncage": "./bin/uncage.js"
+    "uncage": "bin/uncage.js"
   },
+  "files": [
+    "bin",
+    "src",
+    "!src/**/*.test.ts",
+    "LICENSE",
+    "README.md"
+  ],
   "directories": {
     "doc": "docs"
   },
@@ -32,7 +39,7 @@
   "author": "Nightteye",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Nightteye/uncage.git"
+    "url": "git+https://github.com/Nightteye/uncage.git"
   },
   "homepage": "https://github.com/Nightteye/uncage#readme",
   "license": "MIT",
