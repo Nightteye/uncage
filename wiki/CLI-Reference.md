@@ -3,7 +3,13 @@
 ## Basic Usage
 
 ```bash
-npx tsx src/index.ts [url] [options]
+uncage [url] [options]
+```
+
+Or run directly without installing:
+
+```bash
+npx @nightteye/uncage [url] [options]
 ```
 
 If you omit the URL, the web UI opens instead.
@@ -52,7 +58,7 @@ If you omit the URL, the web UI opens instead.
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--no-purge` | Off | Skip PurgeCSS. Keeps all CSS classes, even unused ones. Turn this on if the export looks broken. |
+| `--no-purge` | Off | Skip PurgeCSS. Keeps all CSS classes, even unused ones. Turn this on if dynamic styles look broken. |
 | `--keep-analytics` | Off | Keep third-party analytics and tracking scripts in the export. |
 
 ### Web UI
@@ -67,29 +73,29 @@ If you omit the URL, the web UI opens instead.
 Clone a single page:
 
 ```bash
-npx tsx src/index.ts https://example.com --max-depth 0
+uncage https://example.com --max-depth 0
 ```
 
 Clone an entire site with a custom output folder:
 
 ```bash
-npx tsx src/index.ts https://example.com -o my-site
+uncage https://example.com -o my-site
 ```
 
 Clone with the browser visible (for debugging):
 
 ```bash
-npx tsx src/index.ts https://example.com --no-headless
+uncage https://example.com --no-headless
 ```
 
 Clone without CSS purging (if the export looks broken):
 
 ```bash
-npx tsx src/index.ts https://example.com --no-purge
+uncage https://example.com --no-purge
 ```
 
 Launch the web UI on a different port:
 
 ```bash
-npx tsx src/index.ts --port 9000
+uncage --port 9000
 ```

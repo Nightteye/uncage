@@ -5,18 +5,42 @@
 - Node.js 18 or newer.
 - A Chromium browser (Playwright will download one automatically on first run).
 
-## Installation
+## Quick Start (No Install Needed)
+
+You can run Uncage immediately with `npx`:
+
+```bash
+# Launch the Web UI at http://localhost:8787
+npx @nightteye/uncage
+
+# Or clone directly via CLI
+npx @nightteye/uncage https://example.com
+```
+
+## Installation Options
+
+### Option 1: Global CLI (Recommended)
+
+Install Uncage globally so you can use the `uncage` command anywhere:
+
+```bash
+npm install -g @nightteye/uncage
+
+# Run CLI
+uncage https://example.com
+
+# Launch Web UI
+uncage
+```
+
+### Option 2: From Source
 
 ```bash
 git clone https://github.com/Nightteye/uncage.git
 cd uncage
 npm install
-```
-
-Playwright needs a browser binary. Run this once after installing:
-
-```bash
 npx playwright install chromium
+npm start
 ```
 
 ## Your First Export
@@ -24,18 +48,18 @@ npx playwright install chromium
 ### Using the Web UI
 
 ```bash
-npm start
+npx @nightteye/uncage
 ```
 
-This opens a browser window at `http://localhost:8787`. Paste a URL, click "Start Export", and wait for it to finish. Your files will be in the `output/` folder.
+This opens a browser dashboard at `http://localhost:8787`. Paste a URL, click "Start Export", and watch real-time progress in the instance card. Your files will be saved in `output/<site-name>/`.
 
 ### Using the CLI
 
 ```bash
-npx tsx src/index.ts https://example.com
+uncage https://example.com
 ```
 
-This runs the cloner directly from your terminal. The output goes to `output/example.com/` by default.
+This runs the cloner directly in your terminal. Output goes to `output/example.com/` by default.
 
 ## Verify the Export
 
@@ -46,9 +70,9 @@ cd output/example.com
 npm run preview
 ```
 
-This starts a local server so you can open the cloned site in your browser and check that everything looks right.
+*(If you used the Web UI, an automated preview server is already launched on an available port like `http://localhost:7000`).*
 
 ## Next Steps
 
-- Read the [[Web UI Guide]] to learn about advanced options like depth limits and robots.txt.
+- Read the [[Web UI Guide]] to learn about the 2x2 grid, .ZIP downloads, and options like depth limits.
 - Read the [[CLI Reference]] for all available command-line flags.

@@ -2,6 +2,20 @@
 
 ## Opening the UI
 
+Run with `npx` (no installation required):
+
+```bash
+npx @nightteye/uncage
+```
+
+Or if installed globally:
+
+```bash
+uncage
+```
+
+Or from source in the cloned repo:
+
 ```bash
 npm start
 ```
