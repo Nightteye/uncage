@@ -5,6 +5,7 @@ import { chromium } from 'playwright-extra';
 import * as cheerio from 'cheerio';
 import type { Route } from 'playwright';
 import type { ExtractorOptions } from './types.js';
+import { runAssetFetchHooks, runPageCrawlHooks } from './plugins.js';
 import { optimizeImages } from './optimizer.js';
 import { STATIC_EXTENSIONS, sanitizeFileName } from './constants.js';
 import { type Result, ok, err, tryCatch, tryCatchAsync } from './result.js';
@@ -409,6 +410,13 @@ export async function extract(
 
           const relativePath = `/assets/${path.basename(targetDir)}/${fileName}`;
           assetMap[requestUrl] = relativePath;
+          await runAssetFetchHooks(options.plugins ?? [], {
+            url: requestUrl,
+            contentType: headers['content-type'] || '',
+            filePath: savePath,
+            localPath: relativePath,
+            size: body.byteLength,
+          }, (message) => report('warn', message));
 
           // Track Framer runtime chunks for animation preservation
           if (targetDir === jsDir && RUNTIME_PATTERNS.some(p => p.test(fileName))) {
@@ -612,6 +620,11 @@ await new Promise(r => setTimeout(r, 300));
           })()`);
         }
 
+        html = await runPageCrawlHooks(options.plugins ?? [], {
+          url: currentUrl,
+          depth: nextCandidate.depth,
+          html,
+        }, (message) => report('warn', message));
 
         if (!originalHead) {
           const headMatch = html.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
@@ -652,19 +665,20 @@ await new Promise(r => setTimeout(r, 300));
               let pathname = landedUrlObj.pathname;
               if (pathname === '/') pathname = '/index';
               if (pathname.endsWith('/') && pathname.length > 1) pathname = pathname.slice(0, -1);
+              const route = `${pathname}${landedUrlObj.search}`;
               
               // Write raw HTML to disk immediately (lazy writing) to save memory
-              const rawFileName = rawFileNameForRoute(pathname);
+              const rawFileName = rawFileNameForRoute(route);
               const rawFilePath = path.join(outputDir, rawFileName);
               await fs.writeFile(rawFilePath, html);
-              pageFiles[pathname] = rawFilePath;
+              pageFiles[route] = rawFilePath;
               
               // Check memory limit
-              if (!checkMemoryLimit(maxMemoryMB, `after writing ${pathname}`)) {
+              if (!checkMemoryLimit(maxMemoryMB, `after writing ${route}`)) {
                 console.log(`        Stopping crawl due to memory limit`);
                 break;
               }
-              logMemory(`after ${pathname}`);
+              logMemory(`after ${route}`);
             } else {
               console.log(`        Redirected to external origin (${landedUrlObj.origin}); skipped page capture.`);
             }
@@ -686,8 +700,11 @@ await new Promise(r => setTimeout(r, 300));
     // Rewrite pages & originalHead - read from disk (lazy loading)
     const pages: Record<string, string> = {};
     for (const [route, rawFilePath] of Object.entries(pageFiles)) {
-      let routePath = route === '/index' ? '/' : route;
-      const pageUrl = `${baseOrigin}${routePath}`;
+      const queryStart = route.indexOf('?');
+      const pathname = queryStart === -1 ? route : route.slice(0, queryStart);
+      const search = queryStart === -1 ? '' : route.slice(queryStart);
+      const routePath = pathname === '/index' ? '/' : pathname;
+      const pageUrl = `${baseOrigin}${routePath}${search}`;
       
       // Read raw HTML from disk
       let htmlContent: string;
@@ -732,7 +749,7 @@ await new Promise(r => setTimeout(r, 300));
     if (!options.skipDeps) {
       console.log('  [5/5] Scanning JS modules for missing dependencies...');
       report('phase', 'Scanning JS module dependencies');
-      await downloadMissingDeps(outputDir, assetMap, baseOrigin, runtimeScripts, allowUrls, blockUrls);
+      await downloadMissingDeps(outputDir, assetMap, baseOrigin, runtimeScripts, allowUrls, blockUrls, options.plugins ?? [], (message) => report('warn', message));
     } else {
       console.log('  [5/5] Skipping recursive JS module dependency scan (--skip-deps)');
       report('phase', 'Skipping JS dependency scan');
@@ -994,7 +1011,9 @@ async function downloadMissingDeps(
   baseOrigin: string,
   runtimeScripts: string[],
   allowUrls: string[] = [],
-  blockUrls: string[] = []
+  blockUrls: string[] = [],
+  plugins: ExtractorOptions['plugins'] = [],
+  onPluginWarning?: (message: string) => void
 ): Promise<void> {
   const jsDir = path.join(outputDir, 'public', 'assets', 'js');
   // Cap transitive module size to avoid buffering unbounded responses
@@ -1098,9 +1117,18 @@ async function downloadMissingDeps(
             const ext = rawName.includes('.') ? rawName.substring(rawName.lastIndexOf('.')) : '.js';
             const savedFileName = `${sanitizeFileName(baseName)}-${urlHash}${ext}`;
 
-            await fs.writeFile(path.join(jsDir, savedFileName), Buffer.from(buffer));
+            const dependencyPath = path.join(jsDir, savedFileName);
+            await fs.writeFile(dependencyPath, Buffer.from(buffer));
             downloadedRemote.add(remoteUrl);
-            assetMap[remoteUrl] = `/assets/js/${savedFileName}`;
+            const localPath = `/assets/js/${savedFileName}`;
+            assetMap[remoteUrl] = localPath;
+            await runAssetFetchHooks(plugins, {
+              url: remoteUrl,
+              contentType,
+              filePath: dependencyPath,
+              localPath,
+              size: buffer.byteLength,
+            }, onPluginWarning);
 
             // Track Framer/motion runtime chunks discovered transitively too
             if (RUNTIME_PATTERNS.some(p => p.test(savedFileName)) && !runtimeScripts.includes(`/assets/js/${savedFileName}`)) {

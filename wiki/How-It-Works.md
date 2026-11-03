@@ -52,7 +52,7 @@ Each crawled page's HTML is processed:
 
 ### 7. CSS Purging (Optional)
 
-PurgeCSS runs over the CSS files and removes any classes that are not used in the HTML. This reduces file size. This step can be skipped with `--no-purge` if it removes classes that are added dynamically by JavaScript.
+CSS is minified while selectors are preserved by default. `--purge-css` optionally removes selectors that do not appear in captured HTML or downloaded JavaScript. Leave it off when visual fidelity matters most.
 
 ### 8. Asset Consolidation
 

@@ -342,6 +342,22 @@
       background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.35);
       box-shadow: 0 0 14px rgba(255,255,255,0.18); transform: translateY(-1px);
     }
+    .instance-report {
+      border: 1px solid var(--border-card); border-radius: 12px;
+      background: rgba(255,255,255,0.025); font-size: 12px;
+    }
+    .instance-report > summary {
+      padding: 9px 12px; color: var(--text-dim); font-weight: 600; cursor: pointer;
+    }
+    .instance-report[open] > summary { border-bottom: 1px solid var(--border); }
+    .instance-report-body { display: grid; gap: 10px; padding: 12px; }
+    .instance-report-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+    .instance-report-stat { padding: 8px; border-radius: 9px; background: rgba(255,255,255,0.04); min-width: 0; }
+    .instance-report-stat strong { display: block; color: var(--white); font-size: 13px; overflow-wrap: anywhere; }
+    .instance-report-stat span { display: block; margin-top: 2px; color: var(--text-muted); font-size: 10px; }
+    .instance-report-note { color: var(--text-dim); line-height: 1.5; overflow-wrap: anywhere; }
+    .instance-report-list { margin: 4px 0 0; padding-left: 16px; color: var(--text-muted); line-height: 1.5; overflow-wrap: anywhere; }
+    @media (max-width: 420px) { .instance-report-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .instance-meta {
       font-size: 11px; color: var(--text-dim); font-family: monospace;
     }
@@ -527,10 +543,10 @@
         <li><strong>Headless</strong> — Turn off to watch the browser crawl live.</li>
         <li><strong>Respect robots.txt</strong> — On by default.</li>
         <li><strong>Safe mode</strong> — Disables JS. Faster, can't render SPAs.</li>
-        <li><strong>Skip CSS purge</strong> — Keeps all classes if dynamic styles look broken.</li>
+        <li><strong>Purge unused CSS</strong> — Optional. Leave it off to preserve styles added by JavaScript.</li>
       </ul>
       <div class="callout callout-tip">
-        <strong>Tip:</strong> If an export looks broken, try enabling <strong>Skip CSS purge</strong>. PurgeCSS can strip dynamically-applied classes.
+        <strong>Tip:</strong> Check <code>export-report.json</code> for missing files and external resources. Leave CSS purging off if dynamic styles matter.
       </div>
       <div class="callout callout-warn">
         <strong>Remember:</strong> Only clone sites you own or have permission to capture.
@@ -607,7 +623,7 @@
           <label class="toggle"><input id="safeMode" type="checkbox" /><span class="toggle-track"></span><span class="toggle-label">Safe mode — disable JS</span></label>
           <label class="toggle"><input id="skipDeps" type="checkbox" /><span class="toggle-track"></span><span class="toggle-label">Skip JS dependency scanning</span></label>
           <label class="toggle"><input id="keepAnalytics" type="checkbox" /><span class="toggle-track"></span><span class="toggle-label">Keep analytics and tracking scripts</span></label>
-          <label class="toggle"><input id="noPurge" type="checkbox" /><span class="toggle-track"></span><span class="toggle-label">Skip CSS purge (keep all classes)</span></label>
+          <label class="toggle"><input id="purgeCss" type="checkbox" /><span class="toggle-track"></span><span class="toggle-label">Purge unused CSS (may affect dynamic styles)</span></label>
         </div>
       </details>
 
@@ -723,7 +739,7 @@
         priorityOnly: bool('priorityOnly'),
         skipDeps: bool('skipDeps'),
         keepAnalytics: bool('keepAnalytics'),
-        noPurge: bool('noPurge'),
+        purgeCss: bool('purgeCss'),
         maxPages: num('maxPages'),
         maxDepth: num('maxDepth'),
         timeout: num('timeout')
@@ -848,6 +864,93 @@
           </div>
           <span class="instance-meta">${previewUrl || 'output/' + job.outputName}</span>
         `;
+        if (!card.querySelector('.instance-report')) {
+          const reportDetails = document.createElement('details');
+          reportDetails.className = 'instance-report';
+          const reportSummary = document.createElement('summary');
+          reportSummary.textContent = 'Export quality report';
+          const reportBody = document.createElement('div');
+          reportBody.className = 'instance-report-body';
+          reportBody.textContent = 'Open to view pages, assets, missing files, and external resources.';
+          reportDetails.append(reportSummary, reportBody);
+          card.append(reportDetails);
+
+          reportDetails.addEventListener('toggle', async () => {
+            if (!reportDetails.open || reportDetails.dataset.loaded) return;
+            reportBody.textContent = 'Loading report…';
+            try {
+              const response = await fetch(`/api/report?jobId=${encodeURIComponent(job.id)}`);
+              const report = await response.json();
+              if (!response.ok || !report.summary) throw new Error('Report unavailable');
+
+              reportBody.replaceChildren();
+              const stats = document.createElement('div');
+              stats.className = 'instance-report-stats';
+              const issueCount = report.summary.missingPages + report.summary.missingAssets + report.summary.brokenLocalReferences;
+              for (const [label, value] of [
+                ['Pages', report.summary.pages],
+                ['Assets', report.summary.mappedAssets],
+                ['Local issues', issueCount],
+                ['External', report.summary.externalResources],
+              ]) {
+                const stat = document.createElement('div');
+                stat.className = 'instance-report-stat';
+                const number = document.createElement('strong');
+                number.textContent = String(value);
+                const name = document.createElement('span');
+                name.textContent = label;
+                stat.append(number, name);
+                stats.append(stat);
+              }
+              reportBody.append(stats);
+
+              const totalBytes = Number(report.summary.totalBytes) || 0;
+              const size = totalBytes < 1024 * 1024
+                ? `${(totalBytes / 1024).toFixed(1)} KB`
+                : `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`;
+              const sizeNote = document.createElement('div');
+              sizeNote.className = 'instance-report-note';
+              sizeNote.textContent = `Reported page and asset size: ${size}`;
+              reportBody.append(sizeNote);
+
+              const appendList = (label, items, truncated = false) => {
+                if (!Array.isArray(items) || items.length === 0) return;
+                const section = document.createElement('div');
+                const heading = document.createElement('strong');
+                heading.textContent = label;
+                const list = document.createElement('ul');
+                list.className = 'instance-report-list';
+                for (const item of items.slice(0, 5)) {
+                  const row = document.createElement('li');
+                  row.textContent = typeof item === 'string' ? item : `${item.page || ''} → ${item.reference || ''}`;
+                  list.append(row);
+                }
+                section.append(heading, list);
+                if (items.length > 5 || truncated) {
+                  const more = document.createElement('div');
+                  more.className = 'instance-report-note';
+                  more.textContent = items.length > 5 ? `Showing 5 of ${items.length} listed items.` : 'Additional items are omitted from this report.';
+                  section.append(more);
+                }
+                reportBody.append(section);
+              };
+
+              appendList('Missing pages', report.missingPageFiles);
+              appendList('Missing assets', report.missingAssetFiles);
+              appendList('Broken local references', report.brokenLocalReferences, report.referencesTruncated);
+              appendList('External resources', report.externalResourceReferences, report.externalReferencesTruncated);
+              if (issueCount === 0) {
+                const cleanNote = document.createElement('div');
+                cleanNote.className = 'instance-report-note';
+                cleanNote.textContent = 'No missing pages, assets, or broken local references were found.';
+                reportBody.append(cleanNote);
+              }
+              reportDetails.dataset.loaded = 'true';
+            } catch {
+              reportBody.textContent = 'Could not load the report. Download the ZIP to inspect export-report.json.';
+            }
+          });
+        }
       }
 
       function renderErrorFooter(errMsg) {

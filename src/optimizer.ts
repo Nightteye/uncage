@@ -4,7 +4,7 @@ import cssnano from 'cssnano';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-export async function optimizeExtractedCss(outputDir: string, pages: Record<string, string>) {
+export async function optimizeExtractedCss(outputDir: string, pages: Record<string, string>, purgeUnused = false) {
   const cssDir = path.join(outputDir, 'public', 'assets', 'css');
   let files: string[] = [];
   try {
@@ -13,38 +13,54 @@ export async function optimizeExtractedCss(outputDir: string, pages: Record<stri
     return;
   }
 
-  // Write a temporary file with all HTML content to feed into PurgeCSS
-  const tempHtmlPath = path.join(outputDir, '.temp-purge-content.html');
-  try {
-    const allHtml = Object.values(pages).join('\n');
-    await fs.writeFile(tempHtmlPath, allHtml);
-
-    console.log(`  [Optimizer] Purging and minifying ${files.filter(f => f.endsWith('.css')).length} CSS files...`);
-    
-    for (const file of files) {
-      if (!file.endsWith('.css')) continue;
-      const filePath = path.join(cssDir, file);
-      
-      const jsGlob = path.join(outputDir, 'public', 'assets', 'js', '*.{js,mjs}').replace(/\\/g, '/');
-      try {
-        const purgeResult = await new PurgeCSS().purge({
-          content: [tempHtmlPath, jsGlob],
-          css: [filePath],
-          safelist: [/^(:|::-webkit-|::-moz-|::-ms-|::-o-)/, /^framer-/, /^w-/, /^motion-/, /^animate-/, /^state-/, /active/, /visible/, /hidden/]
-        });
-
-        if (purgeResult && purgeResult[0]) {
-          const purgedCss = purgeResult[0].css;
-          const result = await postcss([cssnano()]).process(purgedCss, { from: filePath, to: filePath });
-          await fs.writeFile(filePath, result.css);
-        }
-      } catch (e: any) {
-        console.log(`        Failed to optimize ${file}: ${e.message}`);
+  // Purging is opt-in: runtime scripts can add classes after the captured
+  // snapshot, so minification alone is the safe default for visual fidelity.
+  let shouldPurge = purgeUnused;
+  const purgeContent: Array<{ raw: string; extension: string }> = [];
+  if (shouldPurge) {
+    try {
+      const html = Object.values(pages).join('\n');
+      let contentBytes = Buffer.byteLength(html);
+      if (contentBytes > 32 * 1024 * 1024) throw new Error('captured HTML exceeds the 32 MB purge input limit');
+      purgeContent.push({ raw: html, extension: 'html' });
+      const jsDir = path.join(outputDir, 'public', 'assets', 'js');
+      const jsFiles = await fs.readdir(jsDir, { recursive: true }).catch((error: NodeJS.ErrnoException) => {
+        if (error.code === 'ENOENT') return [] as string[];
+        throw error;
+      });
+      if (jsFiles.length > 1000) throw new Error('too many JavaScript files for safe CSS purging');
+      for (const file of jsFiles.sort()) {
+        if (!/\.(?:js|mjs|cjs)$/i.test(file)) continue;
+        const script = await fs.readFile(path.join(jsDir, file), 'utf-8');
+        contentBytes += Buffer.byteLength(script);
+        if (contentBytes > 32 * 1024 * 1024) throw new Error('HTML and JavaScript exceed the 32 MB purge input limit');
+        purgeContent.push({ raw: script, extension: 'js' });
       }
+    } catch (error) {
+      shouldPurge = false;
+      console.log(`  [Optimizer] Keeping all CSS selectors: ${error instanceof Error ? error.message : String(error)}`);
     }
-  } finally {
-    // Cleanup temporary purge file guaranteed
-    await fs.unlink(tempHtmlPath).catch(() => {});
+  }
+
+  console.log(`  [Optimizer] ${shouldPurge ? 'Purging and minifying' : 'Minifying'} ${files.filter(f => f.endsWith('.css')).length} CSS files...`);
+  for (const file of files) {
+    if (!file.endsWith('.css')) continue;
+    const filePath = path.join(cssDir, file);
+    try {
+      let css = await fs.readFile(filePath, 'utf-8');
+      if (shouldPurge) {
+        const purgeResult = await new PurgeCSS().purge({
+          content: purgeContent,
+          css: [{ raw: css }],
+          safelist: [/^(:|::-webkit-|::-moz-|::-ms-|::-o-)/, /^framer-/, /^w-/, /^motion-/, /^animate-/, /^state-/, /active/, /visible/, /hidden/],
+        });
+        if (purgeResult[0]) css = purgeResult[0].css;
+      }
+      const result = await postcss([cssnano()]).process(css, { from: filePath, to: filePath });
+      await fs.writeFile(filePath, result.css);
+    } catch (error) {
+      console.log(`        Failed to optimize ${file}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 }
 

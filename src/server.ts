@@ -8,6 +8,7 @@ import { ZipArchive } from 'archiver';
 import type { ProgressEvent, ExtractorOptions } from './types.js';
 import { cloneToStaticHtml } from './pipeline.js';
 import { sanitizeFileName } from './constants.js';
+import { isPathInside } from './path-utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UI_DIR = path.join(__dirname, 'ui');
@@ -16,7 +17,6 @@ const REACT_STATUS_FILE = path.join(UI_DIR, 'react-cloner-status.html');
 const TOS_FILE = path.join(UI_DIR, 'tos.html');
 const CHANGELOG_FILE = path.join(UI_DIR, 'changelog.html');
 const BG_VIDEO_FILE = path.join(UI_DIR, 'bg.mp4');
-const BG2_VIDEO_FILE = path.join(UI_DIR, 'bg2.mp4');
 
 export interface WebUIOptions {
   port?: number;
@@ -53,9 +53,9 @@ function startPreviewServer(dir: string): Promise<number> {
         let pathname = decodeURIComponent(reqUrl.pathname);
         if (pathname.endsWith('/')) pathname += 'index.html';
 
-        let filepath = path.join(dir, pathname);
-        const resolvedDir = path.resolve(dir);
-        if (!path.resolve(filepath).startsWith(resolvedDir)) {
+        const resolvedDir = await fs.realpath(dir);
+        let filepath = path.resolve(resolvedDir, `.${pathname}`);
+        if (!isPathInside(resolvedDir, filepath)) {
           res.writeHead(403);
           return res.end('Forbidden');
         }
@@ -78,13 +78,15 @@ function startPreviewServer(dir: string): Promise<number> {
             // If requesting unhashed or mismatched module (e.g. foo.mjs), find foo-[hash].js/mjs
             try {
               const fileDir = path.dirname(filepath);
+              const realFileDir = await fs.realpath(fileDir);
+              if (!isPathInside(resolvedDir, realFileDir)) throw new Error('Forbidden');
               const { name } = path.parse(filepath);
-              const entries = await fs.readdir(fileDir);
+              const entries = await fs.readdir(realFileDir);
               const fuzzyMatch = entries.find(
                 (f) => f.startsWith(name + '-') || f.startsWith(name + '.')
               );
               if (fuzzyMatch) {
-                const candidate = path.join(fileDir, fuzzyMatch);
+                const candidate = path.join(realFileDir, fuzzyMatch);
                 stat = await fs.stat(candidate);
                 filepath = candidate;
               } else {
@@ -97,14 +99,22 @@ function startPreviewServer(dir: string): Promise<number> {
           }
         }
 
+        const realFilePath = await fs.realpath(filepath);
+        if (!isPathInside(resolvedDir, realFilePath)) {
+          res.writeHead(403);
+          return res.end('Forbidden');
+        }
+        if (!stat.isFile()) {
+          res.writeHead(404);
+          return res.end('Not found');
+        }
         const ext = path.extname(filepath).toLowerCase();
         const contentType = PREVIEW_MIME_TYPES[ext] || 'application/octet-stream';
         res.writeHead(200, {
           'Content-Type': contentType,
           'Content-Length': stat.size,
-          'Access-Control-Allow-Origin': '*',
         });
-        const stream = createReadStream(filepath);
+        const stream = createReadStream(realFilePath);
         stream.pipe(res);
       } catch {
         res.writeHead(500);
@@ -121,7 +131,7 @@ function startPreviewServer(dir: string): Promise<number> {
           reject(err);
         }
       });
-      srv.listen(port, () => {
+      srv.listen(port, '127.0.0.1', () => {
         nextPreviewPort = port + 1;
         resolve(port);
       });
@@ -179,7 +189,7 @@ async function loadJobsFromDisk(): Promise<void> {
             const st = await fs.stat(item.outputDir);
             if (st.isDirectory()) {
               const port = await startPreviewServer(item.outputDir);
-              previewUrl = `http://localhost:${port}`;
+              previewUrl = `http://127.0.0.1:${port}`;
             } else {
               continue;
             }
@@ -223,12 +233,12 @@ async function loadJobsFromDisk(): Promise<void> {
               outputName: entry.name,
               status: 'done',
               outputDir: folderPath,
-              previewUrl: `http://localhost:${port}`,
+              previewUrl: `http://127.0.0.1:${port}`,
               events: [
                 {
                   kind: 'done',
-                  message: `Export restored! Preview running at http://localhost:${port}`,
-                  previewUrl: `http://localhost:${port}`,
+                  message: `Export restored! Preview running at http://127.0.0.1:${port}`,
+                  previewUrl: `http://127.0.0.1:${port}`,
                 },
               ],
               subscribers: [],
@@ -300,11 +310,13 @@ function optionalBoolean(body: Record<string, unknown>, key: string, defaultValu
 export function parseCloneOptions(body: unknown): ExtractorOptions & { purge?: boolean; keepAnalytics?: boolean } {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Request body must be an object');
   const input = body as Record<string, unknown>;
+  const purgeCss = optionalBoolean(input, 'purgeCss', false);
+  const noPurge = optionalBoolean(input, 'noPurge', false);
   const opts: ExtractorOptions & { purge?: boolean; keepAnalytics?: boolean } = {
     headless: optionalBoolean(input, 'headless', true),
     safeMode: optionalBoolean(input, 'safeMode', false),
     skipDeps: optionalBoolean(input, 'skipDeps', false),
-    purge: !optionalBoolean(input, 'noPurge', false),
+    purge: (purgeCss || input.noPurge === false) && !noPurge,
     keepAnalytics: optionalBoolean(input, 'keepAnalytics', false),
     respectRobots: optionalBoolean(input, 'respectRobots', true),
     priorityOnly: optionalBoolean(input, 'priorityOnly', false),
@@ -394,12 +406,11 @@ export async function startWebUI({ port = 8787, hostname = 'localhost' }: WebUIO
     }
 
     if (req.method === 'GET' && (pathname === '/bg.mp4' || pathname === '/bg2.mp4')) {
-      const file = pathname === '/bg.mp4' ? BG_VIDEO_FILE : BG2_VIDEO_FILE;
-      const stat = fs.stat(file);
+      const stat = fs.stat(BG_VIDEO_FILE);
       stat.then(
         (s) => {
           res.writeHead(200, { 'Content-Type': 'video/mp4', 'Content-Length': s.size });
-          const stream = createReadStream(file);
+          const stream = createReadStream(BG_VIDEO_FILE);
           stream.pipe(res);
         },
         () => {
@@ -443,6 +454,42 @@ export async function startWebUI({ port = 8787, hostname = 'localhost' }: WebUIO
         events: j.events.slice(-20),
       }));
       sendJSON(200, allJobs);
+      return;
+    }
+
+    // GET /api/report?jobId= → quality report for a completed export
+    if (req.method === 'GET' && pathname === '/api/report') {
+      const jobId = url.searchParams.get('jobId');
+      const job = jobId ? jobs.get(jobId) : null;
+      if (!jobId) {
+        sendJSON(400, { error: '"jobId" is required' });
+        return;
+      }
+      if (!job) {
+        sendJSON(404, { error: 'Job not found' });
+        return;
+      }
+      if (job.status !== 'done' || !job.outputDir) {
+        sendJSON(409, { error: 'Export quality report is not ready' });
+        return;
+      }
+
+      try {
+        const outputRoot = await fs.realpath(path.resolve(process.cwd(), 'output'));
+        const jobDir = await fs.realpath(job.outputDir);
+        if (!isPathInside(outputRoot, jobDir)) {
+          sendJSON(404, { error: 'Export quality report is unavailable' });
+          return;
+        }
+        const reportPath = await fs.realpath(path.join(jobDir, 'export-report.json'));
+        if (!isPathInside(jobDir, reportPath)) {
+          sendJSON(404, { error: 'Export quality report is unavailable' });
+          return;
+        }
+        sendJSON(200, JSON.parse(await fs.readFile(reportPath, 'utf-8')));
+      } catch {
+        sendJSON(404, { error: 'Export quality report is unavailable' });
+      }
       return;
     }
 
@@ -507,20 +554,25 @@ export async function startWebUI({ port = 8787, hostname = 'localhost' }: WebUIO
 
     // POST /api/clone → start or queue a clone job
     if (req.method === 'POST' && pathname === '/api/clone') {
-      let rawBody = '';
-      req.on('data', (chunk) => {
-        rawBody += chunk;
-        if (rawBody.length > 1_000_000) {
-          // too large; reject
-          rawBody = '';
-          void res.destroy();
+      const chunks: Buffer[] = [];
+      let bodyBytes = 0;
+      let tooLarge = false;
+      req.on('data', (chunk: Buffer) => {
+        if (tooLarge) return;
+        bodyBytes += chunk.length;
+        if (bodyBytes > 1_000_000) {
+          tooLarge = true;
+          chunks.length = 0;
           sendJSON(413, { error: 'Payload too large' });
+          return;
         }
+        chunks.push(chunk);
       });
       req.on('end', () => {
+        if (tooLarge) return;
         let body: any;
         try {
-          body = rawBody ? JSON.parse(rawBody) : {};
+          body = bodyBytes ? JSON.parse(Buffer.concat(chunks).toString('utf-8')) : {};
         } catch {
           sendJSON(400, { error: 'Invalid JSON body' });
           return;
@@ -594,7 +646,7 @@ export async function startWebUI({ port = 8787, hostname = 'localhost' }: WebUIO
               let previewUrl = '';
               try {
                 const port = await startPreviewServer(result.outputDir);
-                previewUrl = `http://localhost:${port}`;
+                previewUrl = `http://127.0.0.1:${port}`;
                 job.previewUrl = previewUrl;
               } catch (err: any) {
                 console.error(`  ⚠️ Could not start preview server: ${err.message}`);

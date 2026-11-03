@@ -1,7 +1,7 @@
 # Open-Source Code Exporter Architecture Plan
 
 ## Prerequisites & Requirements
-- **Runtime:** Node.js (v18+) or Bun.
+- **Runtime:** Node.js 22.13+ (the current supported runtime).
 - **Browser Automation:** Playwright with Chrome DevTools Protocol (CDP) access.
 - **Evasion Framework:** `puppeteer-extra-plugin-stealth` or Camoufox to bypass bot detection.
 - **Asset Processing:** `sharp` (libvips) for high-performance image optimization.

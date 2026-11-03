@@ -56,7 +56,7 @@ Click the "Advanced" toggle below the URL field to see these options:
 | Safe mode | Off | Disables JavaScript. Faster but cannot render single-page apps. |
 | Skip JS dependency scanning | Off | Skips the step that finds and downloads JavaScript module imports. |
 | Keep analytics | Off | Preserves tracking scripts like Google Analytics. |
-| Skip CSS purge | Off | Keeps all CSS classes. Turn this on if the export looks broken. |
+| Purge unused CSS | Off | Removes selectors to make CSS smaller. Leave this off for the best visual fidelity. |
 
 ## Output Files
 
@@ -66,9 +66,12 @@ Exports are saved to `output/<folder-name>/`. Each export contains:
 - An `assets/` folder with CSS, JavaScript, images, fonts, and other resources.
 - A `package.json` with a `preview` script for local testing.
 - A `README.md` with basic instructions.
+- An `export-report.json` with page and asset counts, missing local references, and external resources.
+
+Completed job cards also have an expandable **Export quality report** with these counts and the first few missing or external references.
 
 ## Tips
 
-- If a site looks broken after exporting, try turning on "Skip CSS purge". The purger sometimes removes classes that are added dynamically by JavaScript.
+- If a site looks broken after exporting, check `export-report.json` for missing files. If you enabled "Purge unused CSS", retry with it off to preserve dynamic styles.
 - Use "Max link depth: 0" if you only want a single page, not the whole site.
 - The "Safe mode" option is useful for simple static sites. It skips JavaScript rendering, which makes the export much faster.
