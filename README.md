@@ -245,6 +245,7 @@ Uncage minifies CSS while keeping all selectors by default, including selectors 
 ## Documentation & Links
 
 - **[Wiki](https://github.com/Nightteye/uncage/wiki)**: Full guides, architecture breakdown, and FAQs
+- **[v1.1.0 release announcement](https://github.com/Nightteye/uncage/blob/main/docs/ANNOUNCEMENT-v1.1.0.md)**: Crawl discovery, export reports, and plugin hooks
 - **[Security Policy](SECURITY.md)**: Threat model and vulnerability reporting
 - **[Code of Conduct](CODE_OF_CONDUCT.md)**: Community standards and guidelines
 - **[npm Package](https://www.npmjs.com/package/@nightteye/uncage)**: Official npm registry page
