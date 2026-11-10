@@ -2,15 +2,15 @@
 
 ## The exported site looks broken or unstyled
 
-**Cause**: PurgeCSS removed CSS classes that are added dynamically by JavaScript at runtime. The purger only sees classes in the static HTML, so it thinks the dynamic ones are unused.
+**Cause**: An asset may be missing, a resource may still be external, or optional CSS purging removed a class added by JavaScript.
 
-**Fix**: Re-export with CSS purging disabled:
+**Fix**: Check `export-report.json` for missing local files and external resources. If you enabled `--purge-css`, re-export without it:
 
 ```bash
-npx tsx src/index.ts https://example.com --no-purge
+uncage https://example.com
 ```
 
-Or in the Web UI, check "Skip CSS purge" under Advanced options.
+In the Web UI, leave "Purge unused CSS" turned off.
 
 ---
 

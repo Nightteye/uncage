@@ -1,4 +1,4 @@
-import { Command } from 'commander';
+import { Command, InvalidArgumentError } from 'commander';
 import { chromium } from 'playwright-extra';
 // @ts-ignore
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
@@ -7,6 +7,8 @@ import { sanitizeFileName } from './constants.js';
 import { cloneToStaticHtml } from './pipeline.js';
 import { startWebUI } from './server.js';
 import type { ExtractorOptions } from './types.js';
+
+export type { AssembleContext, AssetFetchContext, HTMLRewriteContext, PageCrawlContext, UncageConfig, UncagePlugin } from './plugins.js';
 
 chromium.use(stealthPlugin());
 
@@ -37,8 +39,10 @@ program
     return isNaN(parsed) || parsed < 0 ? 0 : parsed;
   }, 0)
   .option('--max-depth <number>', 'Maximum link depth from the seed (0 = seed only; default: unlimited)', (val) => {
-    const parsed = parseInt(val, 10);
-    return isNaN(parsed) || parsed < 0 ? undefined : parsed;
+    if (!/^\d+$/.test(val) || !Number.isSafeInteger(Number(val))) {
+      throw new InvalidArgumentError('Max depth must be a non-negative integer');
+    }
+    return Number(val);
   })
   .option('--ignore-robots', 'Ignore robots.txt rules and Crawl-delay (only use with permission)', false)
   .option('--priority-only', 'Crawl only the seed, navigation pages, and high-priority sitemap pages', false)
@@ -51,7 +55,8 @@ program
     memo.push(val);
     return memo;
   }, [])
-  .option('--no-purge', 'Skip PurgeCSS optimization to retain dynamically applied classes')
+  .option('--purge-css', 'Remove unused CSS selectors (may affect dynamic styles)', false)
+  .option('--no-purge', 'Keep all CSS selectors (legacy compatibility; now the default)')
   .option('--keep-analytics', 'Retain third-party analytics and tracking scripts in the exported project', false)
   .action(async (targetUrl?: string, opts?: {
     output?: string;
@@ -69,6 +74,7 @@ program
     allowUrl?: string[];
     blockUrl?: string[];
     purge?: boolean;
+    purgeCss?: boolean;
     keepAnalytics?: boolean;
   }) => {
     try {
@@ -123,7 +129,7 @@ program
       const cloneOptions: ExtractorOptions & { purge?: boolean; keepAnalytics?: boolean } = {
         ...extractorOptions,
       };
-      if (opts?.purge !== undefined) cloneOptions.purge = opts.purge;
+      cloneOptions.purge = opts?.purgeCss === true && opts?.purge !== false;
       if (opts?.keepAnalytics !== undefined) cloneOptions.keepAnalytics = opts.keepAnalytics;
 
       await cloneToStaticHtml(url, outputName, cloneOptions);

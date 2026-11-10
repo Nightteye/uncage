@@ -32,7 +32,7 @@ Yes. The output is plain HTML, CSS, and JavaScript. You can upload it to any sta
 
 A few common reasons:
 - **Dynamic content**: Content loaded by JavaScript after page load may not appear.
-- **CSS purging**: The optimizer may have removed CSS classes that are applied dynamically. Try exporting with `--no-purge`.
+- **CSS purging**: If you enabled `--purge-css`, retry without it to preserve classes added dynamically.
 - **Missing assets**: Some resources (lazy-loaded images, web fonts loaded conditionally) may not have been intercepted during the crawl.
 - **External APIs**: If the site fetches data from an API, that data will not be available in the static export.
 

@@ -76,7 +76,8 @@ describe('crawl candidate ordering and limits', () => {
     expect(isEligibleCrawlCandidate({ url: 'https://example.com/deep', depth: 2, isNavigation: true }, 1, false)).toBe(false);
     expect(isEligibleCrawlCandidate({ url: 'https://example.com/body', depth: 1 }, undefined, true)).toBe(false);
     expect(isEligibleCrawlCandidate({ url: 'https://example.com/map', depth: 1, sitemapPriority: 0.5 }, undefined, true)).toBe(true);
-    expect(canonicalDocumentUrl('https://example.com/path/?q=1#section')).toBe('https://example.com/path');
+    expect(canonicalDocumentUrl('https://example.com/path/?q=1#section')).toBe('https://example.com/path?q=1');
+    expect(canonicalDocumentUrl('https://example.com/path?q=2')).not.toBe(canonicalDocumentUrl('https://example.com/path?q=1'));
   });
 
   it('honors Crawl-delay while preserving jitter', () => {

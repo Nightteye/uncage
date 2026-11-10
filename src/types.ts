@@ -1,3 +1,5 @@
+import type { UncagePlugin } from './plugins.js';
+
 export type ExportFormat = 'react-ts' | 'react-js' | 'html';
 
 export type ProgressEventKind = 'phase' | 'page' | 'asset' | 'warn' | 'info' | 'done' | 'error';
@@ -35,6 +37,7 @@ export interface ExtractorOptions {
   maxDepth?: number; // Maximum document-link depth from the seed; omitted = unlimited
   respectRobots?: boolean; // Respect robots.txt and Crawl-delay (default true)
   priorityOnly?: boolean; // Crawl only seed, navigation, and high-priority sitemap pages
+  plugins?: UncagePlugin[]; // Hooks loaded from uncage.config.ts or supplied programmatically
   onProgress?: ProgressHandler; // optional live progress callback (used by the web UI)
 }
 

@@ -8,6 +8,13 @@ import { stripTrackers } from '../assembler.js';
 import { STATIC_EXTENSIONS } from '../constants.js';
 
 export function routeToHtmlFilename(route: string): string {
+  const queryStart = route.indexOf('?');
+  if (queryStart !== -1) {
+    const pathname = route.slice(0, queryStart);
+    const baseFilename = routeToHtmlFilename(pathname);
+    const hash = crypto.createHash('sha256').update(route).digest('hex').slice(0, 10);
+    return `${baseFilename.slice(0, -'.html'.length)}-q-${hash}.html`;
+  }
   if (!route || route === '/' || route === '/index') return 'index.html';
   let clean = route.replace(/^\//, '').replace(/\/$/, '').trim();
   clean = clean.replace(/\.html$/i, '');
@@ -87,30 +94,25 @@ export const htmlStrategy: ExporterStrategy = {
         const isStaticAsset = href.startsWith('/assets/') || Array.from(STATIC_EXTENSIONS).some(ext => href.toLowerCase().split('?')[0]?.endsWith(`.${ext}`));
 
         if (!isExternal && !isStaticAsset && !$(el).attr('download')) {
-          const match = href.match(/^([^?#]*)([?#].*)?$/);
-          let rawPath = match?.[1] || '';
-          const hashOrQuery = match?.[2] || '';
-
-          if (!rawPath.startsWith('/')) {
-            try {
-              const baseRoute = route.startsWith('/') ? route : '/' + route;
-              const resolved = new URL(rawPath, `http://dummy.com${baseRoute}`);
-              rawPath = resolved.pathname;
-            } catch {}
+          let targetPath: string;
+          let search: string;
+          let hash: string;
+          try {
+            const routePath = route.split('?')[0] || '/';
+            const basePath = routePath === '/index' ? '/' : routePath;
+            const resolved = new URL(href, `http://dummy.com${basePath}`);
+            targetPath = resolved.pathname === '/' ? '/index' : resolved.pathname.replace(/\/+$/, '');
+            search = resolved.search;
+            hash = resolved.hash;
+          } catch {
+            return;
           }
-
           const depth = filename.split('/').length - 1;
           const relPrefix = depth === 0 ? './' : '../'.repeat(depth);
-
-          if (routeMap.has(rawPath)) {
-            const targetHtml = routeMap.get(rawPath)!;
-            $(el).attr('href', relPrefix + targetHtml + hashOrQuery);
-          } else if (rawPath === '/' || rawPath === '/index') {
-            $(el).attr('href', relPrefix + 'index.html' + hashOrQuery);
-          } else if (rawPath.startsWith('/')) {
-            const fallbackHtml = routeToHtmlFilename(rawPath);
-            $(el).attr('href', relPrefix + fallbackHtml + hashOrQuery);
-          }
+          const queryRoute = `${targetPath}${search}`;
+          const queryFilename = search ? routeMap.get(queryRoute) : undefined;
+          const targetHtml = queryFilename || routeMap.get(targetPath) || routeToHtmlFilename(targetPath);
+          $(el).attr('href', relPrefix + targetHtml + (queryFilename ? hash : search + hash));
         }
       });
 
@@ -251,6 +253,9 @@ This folder is 100% static and ready to drag-and-drop to:
 - **Netlify** / **Vercel**
 - **GitHub Pages**
 - **Nginx / Apache** or S3 / Cloudflare Pages
+
+## Export Quality
+Check \`export-report.json\` for page and asset counts, missing local references, and external resources.
 `;
 
     await fs.writeFile(path.join(outputDir, 'README.md'), readme);

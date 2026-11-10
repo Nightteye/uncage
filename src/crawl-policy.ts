@@ -133,13 +133,12 @@ export function canCrawlUrl(url: string, policy: RobotsPolicy): boolean {
   return winner?.directive !== 'disallow';
 }
 
-/** Canonical document identity: HTTP(S), no fragment/query, normalized trailing slash. */
+/** Canonical document identity: HTTP(S), no fragment, normalized trailing slash. */
 export function canonicalDocumentUrl(input: string): string | null {
   try {
     const url = new URL(input);
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
     url.hash = '';
-    url.search = '';
     if (url.pathname.length > 1) url.pathname = url.pathname.replace(/\/+$/, '');
     return url.href;
   } catch {

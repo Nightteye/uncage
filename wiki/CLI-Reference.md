@@ -58,7 +58,8 @@ If you omit the URL, the web UI opens instead.
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--no-purge` | Off | Skip PurgeCSS. Keeps all CSS classes, even unused ones. Turn this on if dynamic styles look broken. |
+| `--purge-css` | Off | Remove unused CSS selectors for a smaller export. May affect dynamic styles. |
+| `--no-purge` | Default behavior | Legacy flag that keeps all CSS selectors. |
 | `--keep-analytics` | Off | Keep third-party analytics and tracking scripts in the export. |
 
 ### Web UI
@@ -88,10 +89,10 @@ Clone with the browser visible (for debugging):
 uncage https://example.com --no-headless
 ```
 
-Clone without CSS purging (if the export looks broken):
+Opt in to removing unused CSS selectors:
 
 ```bash
-uncage https://example.com --no-purge
+uncage https://example.com --purge-css
 ```
 
 Launch the web UI on a different port:

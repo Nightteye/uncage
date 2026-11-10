@@ -1,5 +1,8 @@
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
 import { describe, it, expect } from 'vitest';
-import { routeToHtmlFilename, buildRouteFilenameMap } from './html.js';
+import { routeToHtmlFilename, buildRouteFilenameMap, htmlStrategy } from './html.js';
 
 describe('HTML format utilities', () => {
   describe('routeToHtmlFilename', () => {
@@ -26,6 +29,13 @@ describe('HTML format utilities', () => {
 
     it('strips .html extension from route', () => {
       expect(routeToHtmlFilename('/page.html')).toBe('page.html');
+    });
+
+    it('gives query routes distinct stable filenames', () => {
+      const first = routeToHtmlFilename('/search?q=alpha');
+      expect(first).toBe(routeToHtmlFilename('/search?q=alpha'));
+      expect(first).not.toBe(routeToHtmlFilename('/search?q=beta'));
+      expect(first).not.toBe(routeToHtmlFilename('/search'));
     });
 
     it('sanitizes special characters but preserves slashes', () => {
@@ -78,5 +88,24 @@ describe('HTML format utilities', () => {
       const b = buildRouteFilenameMap(['/page_3', '/page', '/page-2']);
       expect(Array.from(a.entries())).toEqual(Array.from(b.entries()));
     });
+  });
+
+  it('rewrites links to the captured query route and retains fragment links', async () => {
+    const outputDir = await fs.mkdtemp(path.join(os.tmpdir(), 'uncage-query-routes-'));
+    try {
+      const pages = {
+        '/index': '<html><head></head><body><a href="/search?q=alpha#result">Result</a></body></html>',
+        '/search?q=alpha': '<html><head></head><body><a href="?q=beta">Next</a></body></html>',
+        '/search?q=beta': '<html><head></head><body>Beta</body></html>',
+      };
+      await htmlStrategy.compile(outputDir, pages);
+      const map = buildRouteFilenameMap(Object.keys(pages));
+      const index = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
+      const alpha = await fs.readFile(path.join(outputDir, map.get('/search?q=alpha')!), 'utf-8');
+      expect(index).toContain(`href="./${map.get('/search?q=alpha')}#result"`);
+      expect(alpha).toContain(`href="./${map.get('/search?q=beta')}"`);
+    } finally {
+      await fs.rm(outputDir, { recursive: true, force: true });
+    }
   });
 });
